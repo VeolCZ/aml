@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aml"
+version = "0.1.0"
+description = "TODO"
+authors = [{ name = "Jakub Janicek" }]
+requires-python = ">=3.12"
+
+[tool.flake8]
+max-line-length = 88
+max-complexity = 10
+ignore = "E203, W503"
+select = "E9,F63,F7,F82"
+exclude = ".git,__pycache__,old,build,dist"
+statistics = true
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = ["missing-docstring", "too-few-public-methods", "import-error"]
+
+[tool.pylint.format]
+max-line-length = 88
+
+[tool.pylint.design]
+max-args = 5
+max-attributes = 7
+max-locals = 15
+max-public-methods = 20
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+ignore_missing_imports = true
+strict_optional = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true

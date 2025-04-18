@@ -1,0 +1,29 @@
+services:
+  app:
+    container_name: "aml"
+    command: python3 main.py
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CUDA_VERSION: ${CUDA_VERSION}
+        BASE_IMAGE_TYPE: ${BASE_IMAGE_TYPE}
+        OS_VERSION: ${OS_VERSION}
+        PROJECT_NAME: aml
+    image: aml:latest
+    logging:
+      driver: "json-file"
+      options:
+        tag: "{{.Name}}}"
+    volumes:
+      - ./aml:/aml
+      - ./data:/data
+      - ./logs:/logs
+    runtime: nvidia
+    healthcheck:
+      test: [ "CMD", "python", "-c", "import sys; sys.exit(0)" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    stdin_open: true
+    tty: true
