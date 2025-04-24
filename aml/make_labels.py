@@ -13,15 +13,12 @@ def parse_labels(base_path: str) -> pd.DataFrame:
         pd.DataFrame: Dataset with one row per image
     """
 
-    image_names = ['image_id', 'image_name']
     images = pd.read_csv(os.path.join(base_path, 'images.txt'),
-                         sep=' ', header=None, names=image_names)
-    train_test_name = ['image_id', 'is_training']
+                         sep=' ', header=None, names=['image_id', 'image_name'])
     train_test = pd.read_csv(os.path.join(base_path, 'train_test_split.txt'),
-                             sep=' ', header=None, names=train_test_name)
-    image_labels_names = ['image_id', 'class_id']
+                             sep=' ', header=None, names=['image_id', 'is_training'])
     image_labels = pd.read_csv(os.path.join(base_path, 'image_class_labels.txt'),
-                               sep=' ', header=None, names=image_labels_names)
+                               sep=' ', header=None, names=['image_id', 'class_id'])
     bounding_boxes_names = ['image_id', 'x', 'y', 'width', 'height']
     bounding_boxes = pd.read_csv(os.path.join(base_path, 'bounding_boxes.txt'),
                                  sep=' ', header=None, names=bounding_boxes_names)

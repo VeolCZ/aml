@@ -1,6 +1,5 @@
 import sys
-
-from parse_data import make_labels
+from make_labels import make_labels
 
 
 def help_func() -> None:
