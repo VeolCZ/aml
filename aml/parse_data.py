@@ -1,5 +1,5 @@
-import pandas as pd
 import os
+import pandas as pd
 
 
 def parse_labels(base_path: str) -> pd.DataFrame:
