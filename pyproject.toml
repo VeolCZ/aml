@@ -10,7 +10,7 @@ authors = [{ name = "Jakub Janicek" }]
 requires-python = ">=3.12"
 
 [tool.flake8]
-max-line-length = 88
+max-line-length = 120
 max-complexity = 10
 ignore = "E203, W503"
 select = "E9,F63,F7,F82"
@@ -21,7 +21,7 @@ statistics = true
 disable = ["missing-docstring", "too-few-public-methods", "import-error"]
 
 [tool.pylint.format]
-max-line-length = 88
+max-line-length = 120
 
 [tool.pylint.design]
 max-args = 5
