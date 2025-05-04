@@ -109,7 +109,7 @@ def produce_certainty_plot(data: pd.DataFrame) -> None:
     cert_sums_averages.plot(kind="bar", color="skyblue")
     plt.xticks(
         ticks=list(range(0, len(cert_sums_averages), 10)),
-        labels=list(range(0, len(cert_sums_averages), 10)),
+        labels=[str(i) for i in range(0, len(cert_sums_averages), 10)],
     )
     plt.xlabel("Attribute index")
     plt.ylabel("Mean certainty")
