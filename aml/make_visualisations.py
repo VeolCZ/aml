@@ -17,7 +17,7 @@ def add_supper_classes_to_data(data: pd.DataFrame, save: bool = True) -> pd.Data
     Returns:
         pd.DataFrame: the new dataframe
     """
-    super_classes = {}
+    super_classes: dict[str, int] = {}
 
     with open("CUB_200_2011/classes.txt", "r", encoding="utf-8") as file:
         for line in file:
