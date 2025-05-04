@@ -1,8 +1,8 @@
 import pandas as pd
-from sklearn.manifold import TSNE
-from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 
 
 def add_supper_classes_to_data(data: pd.DataFrame, save: bool = True) -> pd.DataFrame:
@@ -19,7 +19,7 @@ def add_supper_classes_to_data(data: pd.DataFrame, save: bool = True) -> pd.Data
     """
     super_classes: dict[str, list[int]] = {}
 
-    with open("CUB_200_2011/classes.txt", "r", encoding="utf-8") as file:
+    with open("/data/CUB_200_2011/classes.txt", "r", encoding="utf-8") as file:
         for line in file:
             index, name = line.split()
             name = name.split(sep="_")[-1]
@@ -62,7 +62,7 @@ def produce_tsne(data: pd.DataFrame) -> None:
     tsne_df = pd.DataFrame(x_embedded, columns=["TSNE1", "TSNE2"])
     tsne_df[["class_id", "x", "y", "width", "height", "super_species"]] = y.values
 
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(30, 20))
     sns.scatterplot(
         data=tsne_df,
         x="TSNE1",
@@ -74,7 +74,8 @@ def produce_tsne(data: pd.DataFrame) -> None:
     )
     plt.title("t-SNE Plot")
     plt.legend(title="Label", ncol=2)
-    plt.show()
+    plt.savefig("/logs/tsne.jpg")
+    plt.close()
 
 
 def produce_class_freq_histogram(data: pd.DataFrame) -> None:
@@ -87,10 +88,12 @@ def produce_class_freq_histogram(data: pd.DataFrame) -> None:
     Returns:
         None
     """
+    plt.figure(figsize=(8, 6))
     plt.hist(data["class_id"], bins=200)
     plt.xlabel("class_id")
     plt.ylabel("frequency")
-    plt.show()
+    plt.savefig("/logs/freq_hist.jpg")
+    plt.close()
 
 
 def produce_certainty_plot(data: pd.DataFrame) -> None:
@@ -113,12 +116,13 @@ def produce_certainty_plot(data: pd.DataFrame) -> None:
     )
     plt.xlabel("Attribute index")
     plt.ylabel("Mean certainty")
-    plt.show()
+    plt.savefig("/logs/certanty_plot.jpg")
+    plt.close()
 
 
-if __name__ == "__main__":
-    data_birds = pd.read_csv("labels.csv")
+def make_visualization() -> None:
+    data_birds = pd.read_csv("/data/labels.csv")
     data_birds = add_supper_classes_to_data(data_birds, save=False)
-    produce_tsne(data_birds)
-    produce_class_freq_histogram(data_birds)
-    produce_certainty_plot(data_birds)
+    produce_tsne(data_birds.copy())
+    produce_class_freq_histogram(data_birds.copy())
+    produce_certainty_plot(data_birds.copy())

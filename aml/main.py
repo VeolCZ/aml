@@ -1,4 +1,5 @@
 import sys
+from make_visualisations import make_visualization
 from make_labels import make_labels
 
 
@@ -11,6 +12,7 @@ def help_func() -> None:
 
 command_map = {
     '--make_labels': (make_labels, "Creates a labels.csv file in /data"),
+    '--make_visualization': (make_visualization, "Create visualizations of /data"),
     '--help': (help_func, "Shows this help message"),
 }
 
