@@ -19,7 +19,7 @@ def add_supper_classes_to_data(data: pd.DataFrame, save: bool = True) -> pd.Data
     """
     super_classes = {}
 
-    with open("CUB_200_2011/classes.txt", "r") as file:
+    with open("CUB_200_2011/classes.txt", "r", encoding="utf-8") as file:
         for line in file:
             index, name = line.split()
             name = name.split(sep="_")[-1]
