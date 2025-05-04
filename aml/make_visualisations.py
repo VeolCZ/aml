@@ -30,8 +30,7 @@ def add_supper_classes_to_data(data: pd.DataFrame, save: bool = True) -> pd.Data
 
     data["super_species"] = "unnamed"
 
-    for key in super_classes:
-        species = super_classes[key]
+    for key, species in super_classes.items():
         data.loc[data["class_id"].isin(species), "super_species"] = key
     if save:
         data.to_csv("/data/labels_with_superspecies.csv", index=False)
@@ -57,10 +56,10 @@ def produce_tsne(data: pd.DataFrame) -> None:
 
     tsne = TSNE(n_components=2, random_state=42)
     pca = PCA(n_components=0.6)
-    X_pca = pca.fit_transform(x)
-    X_embedded = tsne.fit_transform(X_pca)
+    x_pca = pca.fit_transform(x)
+    x_embedded = tsne.fit_transform(x_pca)
 
-    tsne_df = pd.DataFrame(X_embedded, columns=["TSNE1", "TSNE2"])
+    tsne_df = pd.DataFrame(x_embedded, columns=["TSNE1", "TSNE2"])
     tsne_df[["class_id", "x", "y", "width", "height", "super_species"]] = y.values
 
     plt.figure(figsize=(8, 6))
@@ -118,8 +117,8 @@ def produce_certainty_plot(data: pd.DataFrame) -> None:
 
 
 if __name__ == "__main__":
-    data = pd.read_csv("labels.csv")
-    data = add_supper_classes_to_data(data, save=False)
-    produce_tsne(data)
-    produce_class_freq_histogram(data)
-    produce_certainty_plot(data)
+    data_birds = pd.read_csv("labels.csv")
+    data_birds = add_supper_classes_to_data(data_birds, save=False)
+    produce_tsne(data_birds)
+    produce_class_freq_histogram(data_birds)
+    produce_certainty_plot(data_birds)
