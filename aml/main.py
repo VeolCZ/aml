@@ -11,9 +11,9 @@ def help_func() -> None:
 
 
 command_map = {
-    '--make_labels': (make_labels, "Creates a labels.csv file in /data"),
-    '--make_visualization': (make_visualization, "Create visualizations of /data"),
-    '--help': (help_func, "Shows this help message"),
+    "--make_labels": (make_labels, "Creates a labels.csv file in /data"),
+    "--make_visualization": (make_visualization, "Create visualizations of /data"),
+    "--help": (help_func, "Shows this help message"),
 }
 
 

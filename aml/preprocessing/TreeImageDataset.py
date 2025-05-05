@@ -2,24 +2,33 @@ import numpy as np
 import pandas as pd
 import torch
 import torchvision.transforms.functional as F
-from typing import Literal, TypedDict, Union
+from dataclasses import dataclass
+from numpy.typing import NDArray
+from preprocessing.PreprocessPipeline import PreprocessPipeline
 from torch.utils.data import Dataset
 from torchvision.io import read_image
-from preprocessing.TreePreprocessPipeline import TreePreprocessPipeline
+from typing import Literal, Union
+
+DatasetType = Union[Literal["eval"], Literal["train"]]
 
 
-class Label(TypedDict):
-    boxes: torch.Tensor
-    labels: torch.Tensor
+@dataclass
+class Label:
+    bbox: torch.Tensor
+    label: torch.Tensor
 
 
 class TreeImageDataset(Dataset):
     def __init__(
-        self, type: Union[Literal["eval"], Literal["train"]]
+        self, type: DatasetType
     ) -> None:
         self._labels = pd.read_csv("/data/labels.csv")
-        self._train_transform, self._eval_transform = TreePreprocessPipeline.get_transforms()
-        self._type = type
+        if type == "eval":
+            self._base_transform = PreprocessPipeline.get_base_eval_transform()
+        elif type == "train":
+            self._base_transform = PreprocessPipeline.get_base_train_transform()
+        else:
+            raise RuntimeError("Error setting transformation: Invalid dataset type")
 
     def __len__(self) -> int:
         """
@@ -30,7 +39,30 @@ class TreeImageDataset(Dataset):
         """
         return len(self._labels)
 
-    def __getitem__(self, idx: int) -> tuple[torch.Tensor, Label]:
+    def _transform_data(self, image_np: NDArray, label: int, bbox: list[float]) -> tuple[torch.Tensor, Label]:
+        transformed = self._base_transform(
+            image=image_np,
+            bboxes=[bbox],
+            class_labels=[label]
+        )
+        transformed_image = transformed["image"]
+        transformed_bboxes = transformed["bboxes"]
+        transformed_labels = transformed["class_labels"]
+
+        if not transformed_bboxes:
+            labels = Label(
+                bbox=torch.empty((0, 4), dtype=torch.float32),
+                label=torch.empty((0,), dtype=torch.int64)
+            )
+        else:
+            labels = Label(
+                bbox=torch.tensor(transformed_bboxes, dtype=torch.float32),
+                label=torch.tensor(transformed_labels, dtype=torch.int64)
+            )
+
+        return transformed_image, labels
+
+    def __getitem__(self, idx: int) -> tuple[NDArray, Label]:
         try:
             row = self._labels.iloc[idx]
             img_path_value = row["image_path"]
@@ -54,29 +86,7 @@ class TreeImageDataset(Dataset):
         except Exception as e:
             raise RuntimeError(f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
 
-        if self._type == "eval":
-            transform_to_apply = self._eval_transform
-        elif self._type == "train":
-            transform_to_apply = self._train_transform
+        transformed_image, labels = self._transform_data(image_np, label, bbox)
+        image_features = PreprocessPipeline.tree_image_transform(transformed_image.numpy())
 
-        transformed = transform_to_apply(
-            image=image_np,
-            bboxes=[bbox],
-            class_labels=[label]
-        )
-        transformed_image = transformed["image"]
-        transformed_bboxes = transformed["bboxes"]
-        transformed_labels = transformed["class_labels"]
-
-        if not transformed_bboxes:
-            labels = Label(
-                boxes=torch.empty((0, 4), dtype=torch.float32),
-                labels=torch.empty((0,), dtype=torch.int64)
-            )
-        else:
-            labels = Label(
-                boxes=torch.tensor(transformed_bboxes, dtype=torch.float32),
-                labels=torch.tensor(transformed_labels, dtype=torch.int64)
-            )
-
-        return transformed_image, labels
+        return image_features, labels
