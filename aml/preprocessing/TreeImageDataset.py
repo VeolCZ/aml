@@ -57,7 +57,7 @@ class TreeImageDataset(Dataset):
         else:
             labels = Label(
                 bbox=torch.tensor(transformed_bboxes, dtype=torch.float32),
-                label=torch.tensor(transformed_labels, dtype=torch.int64)
+                label=torch.tensor(transformed_labels, dtype=torch.int16)
             )
 
         return transformed_image, labels
@@ -87,6 +87,12 @@ class TreeImageDataset(Dataset):
             raise RuntimeError(f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
 
         transformed_image, labels = self._transform_data(image_np, label, bbox)
-        image_features = PreprocessPipeline.tree_image_transform(transformed_image.numpy())
+
+        try:
+            image_numpy_hwc = transformed_image.permute(1, 2, 0).numpy()
+            image_features = PreprocessPipeline.tree_image_transform(image_numpy_hwc)
+
+        except Exception as e:
+            raise RuntimeError(f"Error during hog generation at index {idx}: {e}")
 
         return image_features, labels
