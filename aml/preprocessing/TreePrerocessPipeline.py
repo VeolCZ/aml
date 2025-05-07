@@ -1,3 +1,4 @@
+import os
 import albumentations as A
 import numpy as np
 import random
@@ -7,25 +8,32 @@ from numpy.typing import NDArray
 from skimage.feature import hog
 from albumentations.pytorch import ToTensorV2
 from typing import Union
-from transformers import ViTImageProcessor, BatchFeature
 
-SEED = 123
+SEED = int(os.getenv("SEED", 123))
 
 
-class PreprocessPipeline:
-    # static prop
-    processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224", cache_dir="/data/vit_preprocess")
-    processor.do_rescale = False
+class TreePrerocessPipeline:
+    """
+    Provides static methods for defining image transformation pipelines for tree image data.
+    """
 
     @staticmethod
     def get_base_train_transform() -> A.Compose:
+        """
+        Returns the base transformation pipeline for training.
+
+        Applies a series of augmentations, normalization, and tensor conversion.
+
+        Returns:
+            A.Compose: The training transformation pipeline.
+        """
         torch.manual_seed(SEED)
         random.seed(SEED)
         np.random.seed(SEED)
 
         train_transforms: list[Union[A.BasicTransform, A.Affine]] = [
-            A.Downscale(scale_range=(0.8, 0.9), interpolation_pair={"upscale": 0, "downscale": 0}, p=0.1),
             A.RandomResizedCrop(scale=(0.8, 1.0), p=1.0, size=(224, 224)),
+            A.Downscale(scale_range=(0.8, 0.9), interpolation_pair={"upscale": 0, "downscale": 0}, p=0.1),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.2),
             A.SafeRotate(limit=10),
@@ -36,7 +44,7 @@ class PreprocessPipeline:
                 border_mode=cv2.BORDER_CONSTANT,
             ),
             A.ColorJitter(p=0.8, hue=(-0.04, 0.04)),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), normalization="min_max"),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ToTensorV2(),
         ]
 
@@ -51,6 +59,12 @@ class PreprocessPipeline:
 
     @staticmethod
     def get_base_eval_transform() -> A.Compose:
+        """
+        Returns the base transformation pipeline for evaluation.
+
+        Returns:
+            A.Compose: The evaluation transformation pipeline.
+        """
         torch.manual_seed(SEED)
         random.seed(SEED)
         np.random.seed(SEED)
@@ -58,7 +72,7 @@ class PreprocessPipeline:
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
             A.Resize(height=256, width=256),
             A.CenterCrop(height=224, width=224),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), normalization="min_max"),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ToTensorV2(),
         ]
 
@@ -73,6 +87,15 @@ class PreprocessPipeline:
 
     @staticmethod
     def tree_image_transform(image: NDArray) -> NDArray[np.float64]:
+        """
+        Extracts HOG features from an image.
+
+        Args:
+            image (NDArray): The input image as a NumPy array (HWC, RGB).
+
+        Returns:
+            NDArray[np.float64]: The HOG features as a NumPy array.
+        """
         img_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         features = hog(img_gray,
                        orientations=9,
@@ -82,7 +105,3 @@ class PreprocessPipeline:
                        feature_vector=True)
 
         return np.asarray(features, dtype=np.float64)
-
-    @staticmethod
-    def vit_image_transform(image: torch.Tensor) -> BatchFeature:
-        return PreprocessPipeline.processor(image)

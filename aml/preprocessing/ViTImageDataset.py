@@ -3,38 +3,62 @@ import pandas as pd
 import torch
 import torchvision.transforms.functional as F
 from numpy.typing import NDArray
-from preprocessing.PreprocessPipeline import PreprocessPipeline
 from torch.utils.data import Dataset
 from torchvision.io import read_image
 from typing import Literal, Union
 from transformers import BatchFeature
+from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline
+
 
 DatasetType = Union[Literal["eval"], Literal["train"]]
 LabelType = dict[str, torch.Tensor]  # not dataclass as pytorch weak
 
 
 class ViTImageDataset(Dataset):
-    def __init__(
-        self, type: DatasetType
-    ) -> None:
+    """
+    Dataset for loading and preprocessing images for ViT.
+
+    Attributes:
+        _labels (pd.DataFrame): DataFrame with image paths, labels, and bboxes.
+        _base_transform (Callable): Transformation pipeline from ViTPreprocessPipeline.
+    """
+
+    def __init__(self, type: DatasetType) -> None:
+        """
+        Initializes ViTImageDataset.
+
+        Args:
+            type (DatasetType): "train" or "eval", determines transformations.
+
+        Raises:
+            RuntimeError: Invalid dataset type.
+        """
         self._labels = pd.read_csv("/data/labels.csv")
         if type == "eval":
-            self._base_transform = PreprocessPipeline.get_base_eval_transform()
+            self._base_transform = ViTPreprocessPipeline.get_base_eval_transform()
         elif type == "train":
-            self._base_transform = PreprocessPipeline.get_base_train_transform()
+            self._base_transform = ViTPreprocessPipeline.get_base_train_transform()
         else:
             raise RuntimeError("Error setting transformation: Invalid dataset type")
 
     def __len__(self) -> int:
         """
-        Returns the total number of samples in the dataset.
-
-        Returns:
-            int: The number of samples.
+        Returns the number of samples in the dataset.
         """
         return len(self._labels)
 
     def _transform_data(self, image_np: NDArray, label: int, bbox: list[float]) -> tuple[torch.Tensor, LabelType]:
+        """
+        Applies transformations to image and bounding box data.
+
+        Args:
+            image_np (NDArray): Image data as NumPy array.
+            label (int): Class label.
+            bbox (list[float]): [xmin, ymin, width, height] bounding box.
+
+        Returns:
+            tuple[torch.Tensor, LabelType]: Transformed image and labels ("bbox", "cls" tensors).
+        """
         transformed = self._base_transform(
             image=image_np,
             bboxes=[bbox],
@@ -58,6 +82,18 @@ class ViTImageDataset(Dataset):
         return transformed_image, labels
 
     def __getitem__(self, idx: int) -> tuple[BatchFeature, LabelType]:
+        """
+        Retrieves image and label data for a given index.
+
+        Args:
+            idx (int): Index of the data sample.
+
+        Returns:
+            tuple[BatchFeature, LabelType]: Image features (BatchFeature) and labels.
+
+        Raises:
+            RuntimeError: On errors reading data, image, or generating embeddings.
+        """
         try:
             row = self._labels.iloc[idx]
             img_path_value = row["image_path"]
@@ -84,7 +120,7 @@ class ViTImageDataset(Dataset):
         transformed_image, labels = self._transform_data(image_np, label, bbox)
 
         try:
-            image_features = PreprocessPipeline.vit_image_transform(transformed_image)
+            image_features = ViTPreprocessPipeline.vit_image_transform(transformed_image)
 
         except Exception as e:
             raise RuntimeError(f"Error during embeddings generation at index {idx}: {e}")

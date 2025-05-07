@@ -3,37 +3,57 @@ import pandas as pd
 import torch
 import torchvision.transforms.functional as F
 from numpy.typing import NDArray
-from preprocessing.ViTImageDataset import LabelType
-from preprocessing.PreprocessPipeline import PreprocessPipeline
+from preprocessing.ViTImageDataset import DatasetType, LabelType
+from preprocessing.TreePrerocessPipeline import TreePrerocessPipeline
 from torch.utils.data import Dataset
 from torchvision.io import read_image
-from typing import Literal, Union
-
-DatasetType = Union[Literal["eval"], Literal["train"]]
 
 
 class TreeImageDataset(Dataset):
-    def __init__(
-        self, type: DatasetType
-    ) -> None:
+    """
+    Dataset for loading and preprocessing images for trees.
+
+    Attributes:
+        _labels (pd.DataFrame): DataFrame with image paths, labels, and bboxes.
+        _base_transform (Callable): Transformation pipeline from TreePrerocessPipeline.
+    """
+
+    def __init__(self, type: DatasetType) -> None:
+        """
+        Initializes TreeImageDataset.
+
+        Args:
+            type (DatasetType): "train" or "eval", determines transformations.
+
+        Raises:
+            RuntimeError: Invalid dataset type.
+        """
         self._labels = pd.read_csv("/data/labels.csv")
         if type == "eval":
-            self._base_transform = PreprocessPipeline.get_base_eval_transform()
+            self._base_transform = TreePrerocessPipeline.get_base_eval_transform()
         elif type == "train":
-            self._base_transform = PreprocessPipeline.get_base_train_transform()
+            self._base_transform = TreePrerocessPipeline.get_base_train_transform()
         else:
             raise RuntimeError("Error setting transformation: Invalid dataset type")
 
     def __len__(self) -> int:
         """
-        Returns the total number of samples in the dataset.
-
-        Returns:
-            int: The number of samples.
+        Returns the number of samples in the dataset.
         """
         return len(self._labels)
 
     def _transform_data(self, image_np: NDArray, label: int, bbox: list[float]) -> tuple[torch.Tensor, LabelType]:
+        """
+        Applies transformations to image and bounding box data.
+
+        Args:
+            image_np (NDArray): Image data as NumPy array.
+            label (int): Class label.
+            bbox (list[float]): [xmin, ymin, width, height] bounding box.
+
+        Returns:
+            tuple[torch.Tensor, LabelType]: Transformed image and labels ("bbox", "cls" tensors).
+        """
         transformed = self._base_transform(
             image=image_np,
             bboxes=[bbox],
@@ -57,6 +77,20 @@ class TreeImageDataset(Dataset):
         return transformed_image, labels
 
     def __getitem__(self, idx: int) -> tuple[NDArray, LabelType]:
+        """
+        Retrieves image and label data for a given index.
+
+        Reads image, transforms it, and generates tree features.
+
+        Args:
+            idx (int): Index of the data sample.
+
+        Returns:
+            tuple[NDArray, LabelType]: Image features (NumPy array) and labels.
+
+        Raises:
+            RuntimeError: On errors reading data, image, or generating features.
+        """
         try:
             row = self._labels.iloc[idx]
             img_path_value = row["image_path"]
@@ -84,7 +118,7 @@ class TreeImageDataset(Dataset):
 
         try:
             image_numpy_hwc = transformed_image.permute(1, 2, 0).numpy()
-            image_features = PreprocessPipeline.tree_image_transform(image_numpy_hwc)
+            image_features = TreePrerocessPipeline.tree_image_transform(image_numpy_hwc)
 
         except Exception as e:
             raise RuntimeError(f"Error during hog generation at index {idx}: {e}")
