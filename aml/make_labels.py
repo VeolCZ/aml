@@ -48,7 +48,9 @@ def parse_labels(base_path: str) -> pd.DataFrame:
     columns += [col for col in df.columns if col.startswith("attr_") and col.endswith("cert")]
 
     final_df = df[columns].copy()
-    final_df["width"] = final_df["width"] - 1
+
+    corrupt_mask = final_df.index.isin([447, 1400, 3616, 3618, 3779, 5028, 5392, 6320])
+    final_df = final_df[~corrupt_mask]
 
     return final_df
 

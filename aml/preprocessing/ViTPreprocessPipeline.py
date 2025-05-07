@@ -59,6 +59,7 @@ class ViTPreprocessPipeline:
                              label_fields=["class_labels"],
                              min_visibility=0.2,
                              min_area=10,
+                             clip=True
                          ),
                          seed=SEED
                          )
@@ -88,6 +89,7 @@ class ViTPreprocessPipeline:
                              label_fields=["class_labels"],
                              min_visibility=0.2,
                              min_area=10,
+                             clip=True
                          )
                          )
 

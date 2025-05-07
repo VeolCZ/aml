@@ -31,19 +31,21 @@ class TreePrerocessPipeline:
         random.seed(SEED)
         np.random.seed(SEED)
 
-        train_transforms: list[Union[A.BasicTransform, A.Affine]] = [
+        train_transforms: list[Union[A.BasicTransform, A.Affine, A.BaseCompose]] = [
             A.RandomResizedCrop(scale=(0.8, 1.0), p=1.0, size=(224, 224)),
-            A.Downscale(scale_range=(0.8, 0.9), interpolation_pair={"upscale": 0, "downscale": 0}, p=0.1),
             A.HorizontalFlip(p=0.5),
-            A.VerticalFlip(p=0.2),
-            A.SafeRotate(limit=10),
-            A.Affine(
-                translate_percent={"x": (-0.05, 0.05), "y": (-0.05, 0.05)},
-                rotate=(-10, 10),
-                p=0.75,
-                border_mode=cv2.BORDER_CONSTANT,
-            ),
-            A.ColorJitter(p=0.8, hue=(-0.04, 0.04)),
+            A.VerticalFlip(p=0.1),
+            A.SafeRotate(limit=10, border_mode=cv2.BORDER_CONSTANT),
+
+            A.SomeOf([
+                A.Downscale(scale_range=(0.8, 0.9), interpolation_pair={"upscale": 0, "downscale": 0}, p=0.2),
+                A.ColorJitter(p=0.3, hue=(-0.04, 0.04)),
+                A.MotionBlur(p=0.4),
+                A.RandomBrightnessContrast(p=0.4),
+                A.GaussNoise(p=0.1),
+                A.RandomRain(p=0.05)
+            ], p=1, n=2, replace=False),
+
             A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ToTensorV2(),
         ]
@@ -54,6 +56,7 @@ class TreePrerocessPipeline:
                              label_fields=["class_labels"],
                              min_visibility=0.2,
                              min_area=10,
+                             clip=True
                          )
                          )
 
@@ -82,6 +85,7 @@ class TreePrerocessPipeline:
                              label_fields=["class_labels"],
                              min_visibility=0.2,
                              min_area=10,
+                             clip=True
                          )
                          )
 
