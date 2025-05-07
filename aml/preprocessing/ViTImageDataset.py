@@ -3,16 +3,17 @@ import pandas as pd
 import torch
 import torchvision.transforms.functional as F
 from numpy.typing import NDArray
-from preprocessing.ViTImageDataset import LabelType
 from preprocessing.PreprocessPipeline import PreprocessPipeline
 from torch.utils.data import Dataset
 from torchvision.io import read_image
 from typing import Literal, Union
+from transformers import BatchFeature
 
 DatasetType = Union[Literal["eval"], Literal["train"]]
+LabelType = dict[str, torch.Tensor]  # not dataclass as pytorch weak
 
 
-class TreeImageDataset(Dataset):
+class ViTImageDataset(Dataset):
     def __init__(
         self, type: DatasetType
     ) -> None:
@@ -46,7 +47,7 @@ class TreeImageDataset(Dataset):
         if not transformed_bboxes:
             labels = {
                 "bbox": torch.empty((0, 4), dtype=torch.float32),
-                "cls": torch.empty((0,), dtype=torch.int64)
+                "cls": torch.empty((0,), dtype=torch.int16)
             }
         else:
             labels = {
@@ -56,7 +57,7 @@ class TreeImageDataset(Dataset):
 
         return transformed_image, labels
 
-    def __getitem__(self, idx: int) -> tuple[NDArray, LabelType]:
+    def __getitem__(self, idx: int) -> tuple[BatchFeature, LabelType]:
         try:
             row = self._labels.iloc[idx]
             img_path_value = row["image_path"]
@@ -83,10 +84,9 @@ class TreeImageDataset(Dataset):
         transformed_image, labels = self._transform_data(image_np, label, bbox)
 
         try:
-            image_numpy_hwc = transformed_image.permute(1, 2, 0).numpy()
-            image_features = PreprocessPipeline.tree_image_transform(image_numpy_hwc)
+            image_features = PreprocessPipeline.vit_image_transform(transformed_image)
 
         except Exception as e:
-            raise RuntimeError(f"Error during hog generation at index {idx}: {e}")
+            raise RuntimeError(f"Error during embeddings generation at index {idx}: {e}")
 
         return image_features, labels
