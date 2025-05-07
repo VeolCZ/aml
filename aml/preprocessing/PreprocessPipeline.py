@@ -7,11 +7,16 @@ from numpy.typing import NDArray
 from skimage.feature import hog
 from albumentations.pytorch import ToTensorV2
 from typing import Union
+from transformers import ViTImageProcessor, BatchFeature
 
 SEED = 123
 
 
 class PreprocessPipeline:
+    # static prop
+    processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224", cache_dir="/data/vit_preprocess")
+    processor.do_rescale = False
+
     @staticmethod
     def get_base_train_transform() -> A.Compose:
         torch.manual_seed(SEED)
@@ -31,7 +36,7 @@ class PreprocessPipeline:
                 border_mode=cv2.BORDER_CONSTANT,
             ),
             A.ColorJitter(p=0.8, hue=(-0.04, 0.04)),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), normalization="min_max"),
             ToTensorV2(),
         ]
 
@@ -53,7 +58,7 @@ class PreprocessPipeline:
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
             A.Resize(height=256, width=256),
             A.CenterCrop(height=224, width=224),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), normalization="min_max"),
             ToTensorV2(),
         ]
 
@@ -77,3 +82,7 @@ class PreprocessPipeline:
                        feature_vector=True)
 
         return np.asarray(features, dtype=np.float64)
+
+    @staticmethod
+    def vit_image_transform(image: torch.Tensor) -> BatchFeature:
+        return PreprocessPipeline.processor(image)
