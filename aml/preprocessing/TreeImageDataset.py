@@ -1,10 +1,11 @@
 import numpy as np
+import os
 import pandas as pd
 import torch
 import torchvision.transforms.functional as F
 from dataclasses import dataclass
 from numpy.typing import NDArray
-from preprocessing.PreprocessPipeline import PreprocessPipeline
+from aml.preprocessing.PreprocessPipeline import PreprocessPipeline
 from torch.utils.data import Dataset
 from torchvision.io import read_image
 from typing import Literal, Union
@@ -22,7 +23,8 @@ class TreeImageDataset(Dataset):
     def __init__(
         self, type: DatasetType
     ) -> None:
-        self._labels = pd.read_csv("/data/labels.csv")
+        labels_path = os.path.join(os.path.dirname(__file__), "data", "labels.csv")
+        self._labels = pd.read_csv(labels_path)
         if type == "eval":
             self._base_transform = PreprocessPipeline.get_base_eval_transform()
         elif type == "train":
