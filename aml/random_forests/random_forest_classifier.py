@@ -28,7 +28,7 @@ def my_collate_fn(data):
     return images, label_ids
 
 if __name__ == "__main__":
-    train_dataloader = DataLoader(TreeImageDataset("train"), collate_fn=my_collate_fn)
+    train_dataloader = DataLoader(TreeImageDataset("train"))
     all_x = []
     all_y = []
     print("Loading data...")

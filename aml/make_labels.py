@@ -51,5 +51,5 @@ def parse_labels(base_path: str) -> pd.DataFrame:
 
 
 def make_labels() -> None:
-    df = parse_labels("/home/kania/CUB_200_2011")
-    df.to_csv("data/labels.csv", index=False)
+    df = parse_labels("/data/CUB_200_2011")
+    df.to_csv("/data/labels.csv", index=False)
