@@ -1,21 +1,38 @@
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 import numpy as np
 from numpy.typing import NDArray
 from preprocessing.TreeImageDataset import TreeImageDataset
 from torch.utils.data import DataLoader
 import torch
 
-def compute_many_iou(many_boxes1, many_boxes2):
-    i=0
-    sum=0
+
+def compute_many_iou(many_boxes1: list[torch.tensor], many_boxes2: list[torch.tensor]):
+    """
+    Compute the average Intersection over Union (IoU) of two lists of bounding boxes.
+    Args:
+        many_boxes1: The first list of bounding boxes (test boxes).
+        many_boxes2: The second list of bounding boxes (predicted boxes).
+    Returns:
+        The average IoU of the two lists of bounding boxes.
+    """
+    i = 0
+    sum = 0
     for box1, box2 in zip(many_boxes1, many_boxes2):
-        sum+= compute_iou(box1, box2)
-        i+=1
+        sum += compute_iou(box1, box2)
+        i += 1
     return sum/i
 
-def compute_iou(box1, box2):
+
+def compute_iou(box1: torch.tensor, box2: torch.tensor):
+    """
+    Compute the Intersection over Union (IoU) of two bounding boxes.
+    Args:
+        box1: The first bounding box (test).
+        box2: The second bounding box (prediction).
+    Returns:
+        The IoU of the two bounding boxes.
+    """
     # box: [x1, y1, x2, y2]
     x1 = max(box1[0], box2[0])
     y1 = max(box1[1], box2[1])
@@ -32,10 +49,20 @@ def compute_iou(box1, box2):
     else:
         return 0
 
+
 def train_random_forest(
     x: NDArray[np.float64], y, test_size: float = 0.2
 ) -> tuple[RandomForestRegressor, float]:
-    # Flattening
+    """
+    Train a random forest regressor on the given data.
+    Args:
+        x: The input data.
+        y: The labels.
+        test_size: The proportion of the dataset to include in the test split.
+    Returns:
+        forest_regressor: The trained random forest regressor.
+        iou: The IOU of the regressor on the test set.
+    """
     x = [sample.flatten() for sample in x]
     x = np.array(x, dtype=np.float64)
 
@@ -47,44 +74,43 @@ def train_random_forest(
         stratify=[label["cls"] for label in y]
     )
 
-    print("Fitting has begun... dun dun dunnn...")
+    print("Fitting, this will take a while...")
     y_train = [y.squeeze() for y in y_train]
     y_test = [y.squeeze() for y in y_test]
     forest_regressor.fit(x_train, y_train)
     print(y_train)
-    print("predicting, hopefully better than my future")
+    print("Predicting, this will take a while...")
     y_pred = forest_regressor.predict(x_test)
 
-    print("figuring out if this thing is better than random guessing")
+    print("computing IOU")
     iou = compute_many_iou(y_test, y_pred)
     print("IOU: ", iou)
 
     return forest_regressor, iou
 
 
-def my_collate_fn(batch):
+def my_collate_fn(batch: list[tuple[torch.Tensor, dict]]) -> tuple[list[torch.Tensor], list[dict]]:
+    """
+    Custom collate function to handle the batch of data.
+    Args:
+        batch: A list of tuples containing the image tensor and the corresponding label dictionary.
+    Returns:
+        A tuple containing a list of image tensors and a list of label dictionaries.
+    """
     images, labels = zip(*batch)
     return list(images), list(labels)
 
 
-def treereg_test():
+def treereg_test() -> None:
+    """
+    Test the random forest regressor on the training data.
+    """
     train_dataloader = DataLoader(TreeImageDataset("train"), collate_fn=my_collate_fn)
     all_x = []
     all_y = []
-    idx = 0
 
     for x_batch, y_batch in train_dataloader:
-        print(f"Batch {idx}")
-        idx += 1
-        if idx >= 21:
-            print("Karolina's computer likes being alive")
-            break
-
-        # x_batch_np = np.array([x for x in x_batch], dtype=np.float64)
-        # y_batch_np = [int(label["bbox"].view(-1)[0].item()) for label in y_batch]
         all_x.extend(x_batch)
         all_y.extend(y_batch)
 
-    #all_x = np.vstack(all_x)
-    #all_y = np.array(all_y, dtype=np.int64)
     train_random_forest(all_x, all_y)
