@@ -1,7 +1,7 @@
 import sys
 from make_visualisations import make_visualization
 from make_labels import make_labels
-
+from random_forests.random_forest import RandomForest, run_forest
 
 def help_func() -> None:
     print("Available commands:")
@@ -10,10 +10,12 @@ def help_func() -> None:
     print("\nYou can combine multiple commands which will be executed in order, e.g.: --parse --goodbye")
 
 
+
 command_map = {
     "--make_labels": (make_labels, "Creates a labels.csv file in /data"),
     "--make_visualization": (make_visualization, "Create visualizations of /data"),
     "--help": (help_func, "Shows this help message"),
+    "--forest.runforest": (run_forest, "Run the random forest training after instantiating the forest object"),
 }
 
 
@@ -33,4 +35,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    forest = RandomForest(task_type="regression")
+    forest.runforest()
