@@ -65,13 +65,52 @@ class RandomForest:
             i += 1
         return sum / i
 
-    def _compute_metrics(self, y_test, y_pred)->float:
+    def _compute_metrics(self, y_test, y_pred) -> float:
         if self.task_type == "classification":
             return self._compute_many_iou(y_test, y_pred)
         elif self.task_type == "regression":
             return accuracy_score(y_test, y_pred)
 
-    
+    def _collate(self, batch):
+        images, labels = zip(*batch)
+        return list(images), list(labels)
 
-    def train():
+    def _load_data(self):
+        train_dataloader = DataLoader(
+            TreeImageDataset("train"), collate_fn=self._collate
+        )
+        self.x = []
+        self.y = []
 
+        for x_batch, y_batch in train_dataloader:
+            self.x.extend(x_batch)
+            self.y.extend(y_batch)
+
+    def train(self, test_size=0.2):
+        if self.task_type == "regression":
+            target = "cls"
+        elif self.task_type == "classification":
+            target = "bbox"
+
+        x = [sample.flatten() for sample in self.x]
+        x = np.array(x, dtype=np.float64)
+        x_train, x_test, y_train, y_test = train_test_split(
+            x,
+            [label[target] for label in self.y],
+            test_size=test_size,
+            stratify=[label["cls"] for label in self.y],
+        )
+
+        print("Fitting, this will take a while...")
+        y_train = [y.squeeze() for y in y_train]
+        y_test = [y.squeeze() for y in y_test]
+        self.model.fit(x_train, y_train)
+        print(y_train)
+        print("Predicting, this will take a while...")
+        y_pred = self.model.predict(x_test)
+        eval_metric = self._compute_metrics(y_test, y_pred)
+        return eval_metric
+
+    def process(self):
+        self._load_data()
+        self.train()
