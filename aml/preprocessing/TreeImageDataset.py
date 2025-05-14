@@ -105,6 +105,7 @@ class TreeImageDataset(Dataset):
             image_tensor = read_image(img_path)
             image = F.to_pil_image(image_tensor)
             image_np = np.array(image)
+
         except Exception as e:
             raise RuntimeError(f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
 

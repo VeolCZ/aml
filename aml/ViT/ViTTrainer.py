@@ -16,12 +16,12 @@ class ViTTrainer:
         self.device = device
         self._logger = logging.getLogger(self.__class__.__name__)
 
-    def train(self, epochs: int, model_path: str) -> None:
+    def train(self, epochs: int, model_path: str, save: bool = False) -> None:
         optimizer = torch.optim.AdamW(
             [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()], lr=0.01)
 
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=epochs, eta_min=0.001)
+            optimizer, T_max=epochs, eta_min=0.0005)
 
         bbox_criterion = torchvision.ops.complete_box_iou_loss
         cls_criterion = torch.nn.CrossEntropyLoss()
@@ -49,7 +49,8 @@ class ViTTrainer:
 
                 loss.backward()
                 optimizer.step()
-                scheduler.step()
+
+            self._logger.info(f"Epoch [{epoch}] Train Loss - Bbox:{bbox_loss.item()} Cls:{cls_loss.item()}")
 
             self.model.eval()
             val_bbox: torch.Tensor
@@ -65,14 +66,14 @@ class ViTTrainer:
                     val_cls_loss: torch.Tensor = cls_criterion(val_cls, input_cls)
                     val_loss = val_bbox_loss + val_cls_loss
 
-            self._logger.info(
-                f"Epoch [{epoch}] Train Loss - Bbox:{bbox_loss.item()} Cls:{cls_loss.item()} \
-                    Val Loss - Bbox:{val_bbox_loss.item()} Cls:{val_cls_loss.item()}")
+            self._logger.info(f"Epoch [{epoch}] Val Loss - Bbox:{val_bbox_loss.item()} Cls:{val_cls_loss.item()}")
 
+            scheduler.step()
             if val_loss <= best_val_loss:
                 best_val_loss = val_loss
                 best_model = copy.deepcopy(self.model.state_dict())
 
         if best_model:
             self.model.load_state_dict(best_model)
+        if save:
             torch.save(best_model, model_path+f"ValLoss_{round(val_loss.item(), 2)}" + ".pth")

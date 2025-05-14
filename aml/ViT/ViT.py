@@ -1,17 +1,18 @@
-from transformers import ViTForImageClassification
 import torch
+from transformers import ViTForImageClassification
 
 
 class ViT(torch.nn.Module):
-    def __init__(self, hidden_size: int = 100) -> None:
+    def __init__(self, hidden_size: int = 1024) -> None:
         super(ViT, self).__init__()
-        dp_rate = 0.2
+        dp_rate = 0.1
         backbone_out_size = 768
-        out_classes = 200  # abstact the number of classes
+        out_classes = 200
 
         self.backbone = ViTForImageClassification.from_pretrained(
             "google/vit-base-patch16-224", cache_dir="/data/vit")
         self.backbone.classifier = torch.nn.Identity()
+
         for param in self.backbone.parameters():
             param.requires_grad = False
 
@@ -19,13 +20,26 @@ class ViT(torch.nn.Module):
             torch.nn.Linear(backbone_out_size, hidden_size),
             torch.nn.Dropout(dp_rate),
             torch.nn.LeakyReLU(),
-            torch.nn.Linear(hidden_size, out_classes),
+            torch.nn.Linear(hidden_size, hidden_size),
+            torch.nn.Dropout(dp_rate),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(hidden_size, hidden_size // 4),
+            torch.nn.Dropout(dp_rate),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(hidden_size // 4, out_classes),
         )
+
         self.bbox_head = torch.nn.Sequential(
             torch.nn.Linear(backbone_out_size, hidden_size),
             torch.nn.Dropout(dp_rate),
             torch.nn.LeakyReLU(),
-            torch.nn.Linear(hidden_size, 4),
+            torch.nn.Linear(hidden_size, hidden_size),
+            torch.nn.Dropout(dp_rate),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(hidden_size, hidden_size // 4),
+            torch.nn.Dropout(dp_rate),
+            torch.nn.LeakyReLU(),
+            torch.nn.Linear(hidden_size // 4, 4),
         )
 
         for layer in self.cls_head + self.bbox_head:

@@ -7,7 +7,7 @@ from make_labels import make_labels
 
 logging.basicConfig(
     level="INFO",
-    filename="/logs/log.txt",  # Enable for preserved logs
+    # filename="/logs/logs.log",  # Enable for preserved logs
     format="%(asctime)s %(levelname)s %(module)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )

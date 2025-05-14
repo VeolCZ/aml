@@ -112,6 +112,7 @@ class ViTImageDataset(Dataset):
             image_tensor = read_image(img_path)
             image = F.to_pil_image(image_tensor)
             image_np = np.array(image)
+
         except Exception as e:
             raise RuntimeError(
                 f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
@@ -127,3 +128,6 @@ class ViTImageDataset(Dataset):
                 f"Error during embeddings generation at index {idx}: {e}")
 
         return image_features.pixel_values[0], labels
+
+    def get_cls_labels(self) -> list[int]:
+        return [int(label) for label in self._labels["class_id"]]
