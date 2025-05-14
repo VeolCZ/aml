@@ -1,6 +1,7 @@
 from .RandomForestClassifier import RandomForestClassifierModel
 from .RandomForestRegressor import RandomForestRegressorModel
 
+
 def train_classifier_forest() -> None:
     """
     Run the random forest training for classification.

@@ -1,7 +1,7 @@
 import sys
 from make_visualisations import make_visualization
 from make_labels import make_labels
-from random_forests.RandomForestUtils import train_classifier_forest, train_regressor_forest
+from random_forests.forest_train_util import train_classifier_forest, train_regressor_forest
 
 
 def help_func() -> None:

@@ -1,12 +1,12 @@
 import torch
 import joblib
+from numpy.typing import NDArray
 from abc import ABC, abstractmethod
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score
 from preprocessing.ViTImageDataset import LabelType
 from preprocessing.TreeImageDataset import TreeImageDataset
-from numpy.typing import NDArray
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 
 class RandomForest(ABC):
@@ -15,7 +15,7 @@ class RandomForest(ABC):
     This class is designed to be subclassed for specific tasks such as classification or regression.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initializes the RandomForest instance.
         Sets up the model and data containers.
@@ -25,7 +25,7 @@ class RandomForest(ABC):
         self.model = self._init_model()
 
     @abstractmethod
-    def _init_model(self):
+    def _init_model(self) -> RandomForestClassifier | RandomForestRegressor:
         pass
 
     @abstractmethod
@@ -35,38 +35,6 @@ class RandomForest(ABC):
     @abstractmethod
     def _get_target_key(self) -> str:
         pass
-
-    def _compute_iou(self, box1: torch.Tensor, box2: torch.Tensor) -> float:
-        """
-        Computes the Intersection over Union (IoU) of two bounding boxes.
-        Args:
-            box1 (torch.Tensor): The first bounding box.
-            box2 (torch.Tensor): The second bounding box.
-        Returns:
-            float: The IoU score.
-        """
-        x1 = torch.max(torch.tensor([box1[0], box2[0]]))
-        y1 = torch.max(torch.tensor([box1[1], box2[1]]))
-        x2 = torch.min(torch.tensor([box1[2], box2[2]]))
-        y2 = torch.min(torch.tensor([box1[3], box2[3]]))
-
-        inter_area = torch.max(torch.tensor(0), x2 - x1) * torch.max(torch.tensor(0), y2 - y1)
-        box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
-        box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
-        union_area = box1_area + box2_area - inter_area
-        return float((inter_area / union_area).item()) if union_area > 0 else 0
-
-    def _compute_many_iou(self, boxes1: list[torch.Tensor], boxes2: list[torch.Tensor]) -> float:
-        """
-        Computes the average IoU of two lists of bounding boxes.
-        Args:
-            boxes1 (list[torch.Tensor]): The first list of bounding boxes.
-            boxes2 (list[torch.Tensor]): The second list of bounding boxes.
-        Returns:
-            float: The average IoU score.
-        """
-        assert len(boxes1) == len(boxes2)
-        return sum(self._compute_iou(b1, b2) for b1, b2 in zip(boxes1, boxes2)) / len(boxes1)
 
     def _collate(self, batch: list[tuple[torch.Tensor, dict]]) -> tuple[list[torch.Tensor], list[dict]]:
         """
@@ -121,18 +89,6 @@ class RandomForest(ABC):
         preds = self.model.predict(x)
         return [torch.tensor(p) for p in preds]
 
-    def evaluate(self, x: list[torch.Tensor], y_ground: list[torch.Tensor]) -> float:
-        """
-        Evaluates the model on the given input data.
-        Args:
-            x (list[torch.Tensor]): The input data.
-            y_ground (list[torch.Tensor]): The ground truth labels.
-        Returns:
-            float: The accuracy score of the model on the input data.
-        """
-        y = self.predict(x)
-        return self._compute_metrics(y, y_ground)
-
     def save_model(self, path: str) -> None:
         """
         Saves the trained model to the specified path.
@@ -161,6 +117,18 @@ class RandomForest(ABC):
         print("Data loaded.")
         score = self.fit()
         print("Training complete. Score:", score)
+
+    def evaluate(self, x: list[torch.Tensor], y_ground: list[torch.Tensor]) -> float:
+        """
+        Evaluates the model on the given input data.
+        Args:
+            x (list[torch.Tensor]): The input data.
+            y_ground (list[torch.Tensor]): The ground truth labels.
+        Returns:
+            float: The accuracy score of the model on the input data.
+        """
+        y = self.predict(x)
+        return self._compute_metrics(y, y_ground)
 
     def evaluate_forest(self, path: str) -> None:
         """
