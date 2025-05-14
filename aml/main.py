@@ -1,4 +1,5 @@
 import sys
+from ViT.test import test_vit
 from make_visualisations import make_visualization
 from make_labels import make_labels
 
@@ -14,6 +15,7 @@ command_map = {
     "--make_labels": (make_labels, "Creates a labels.csv file in /data"),
     "--make_visualization": (make_visualization, "Create visualizations of /data"),
     "--help": (help_func, "Shows this help message"),
+    "--test_vit": (test_vit, "tests vit")
 }
 
 
