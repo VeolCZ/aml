@@ -3,6 +3,10 @@
 # Custom
 /data
 /logs
+/lib64
+/activate
+.vscode
+/bin
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
