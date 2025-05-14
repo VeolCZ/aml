@@ -1,7 +1,16 @@
+import logging
 import sys
 from ViT.ViT_utils import train_vit
 from make_visualisations import make_visualization
 from make_labels import make_labels
+
+
+logging.basicConfig(
+    level="INFO",
+    filename="/logs/log.txt",  # Enable for preserved logs
+    format="%(asctime)s %(levelname)s %(module)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 def help_func() -> None:

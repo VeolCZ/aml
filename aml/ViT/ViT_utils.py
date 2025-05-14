@@ -1,21 +1,21 @@
-from datetime import datetime
-import multiprocessing
 import os
 import torch
-from torch.utils.data import random_split, Subset
+import multiprocessing
+from datetime import datetime
 from ViT.ViT import ViT
 from ViT.ViTTrainer import ViTTrainer
-from preprocessing.ViTImageDataset import ViTImageDataset
 from torch.utils.data import DataLoader
+from torch.utils.data import random_split, Subset
+from preprocessing.ViTImageDataset import ViTImageDataset
 
 
 def train_vit() -> None:
     # Config
     SEED = int(os.getenv("SEED", 123))
     torch.manual_seed(SEED)
-    batch_size = 2
+    batch_size = 400
     device = torch.device("cuda")
-    epochs = 2
+    epochs = 1
 
     # Datasets
     dataset = ViTImageDataset(type="train")
@@ -30,20 +30,19 @@ def train_vit() -> None:
         generator=torch.Generator().manual_seed(SEED),
     )
 
-    train_dataset = Subset(dataset, train_indices.indices)  # [:1]
+    train_dataset = Subset(dataset, train_indices.indices)
     val_dataset = Subset(dataset, val_indices.indices)
     test_dataset = Subset(dataset, test_indices.indices)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
-                              num_workers=multiprocessing.cpu_count(), pin_memory=True if device.type == 'cuda' else False)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True, drop_last=True,  # TODO remove drop_last
-                            num_workers=multiprocessing.cpu_count(), pin_memory=True if device.type == 'cuda' else False)
+                              num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True,
+                            num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True,
-                             num_workers=multiprocessing.cpu_count(), pin_memory=True if device.type == 'cuda' else False)
+                             num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
 
-    print(f"Train size: {len(train_loader.dataset)}")
     # Train the model
     model = ViT()
     trainer = ViTTrainer(model, train_loader, val_loader, device)
     trainer.train(
-        epochs=epochs, model_path=f"/data/ViT_{datetime.utcnow()}.pth")
+        epochs=epochs, model_path=f"/data/ViT_{datetime.utcnow()}")

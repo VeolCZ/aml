@@ -11,6 +11,9 @@ from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline
 
 DatasetType = Union[Literal["eval"], Literal["train"]]
 LabelType = dict[str, torch.Tensor]  # not dataclass as pytorch weak
+use_cols = ["image_path", "class_id", "x", "y", "width", "height"]
+d_type = {"image_path": str, "class_id": int, "x": float, "y": float, "width": float, "height": float}
+class_count = 200
 
 
 class ViTImageDataset(Dataset):
@@ -32,8 +35,7 @@ class ViTImageDataset(Dataset):
         Raises:
             RuntimeError: Invalid dataset type.
         """
-        self._labels = pd.read_csv("/data/labels.csv", dtype={
-                                   "image_path": str, "class_id": int, "x": float, "y": float, "width": float, "height": float}, usecols=["image_path", "class_id", "x", "y", "width", "height"]).iloc[:50]  # TODO remove slicing
+        self._labels = pd.read_csv("/data/labels.csv", dtype=d_type, usecols=use_cols)
         if type == "eval":
             self._base_transform = ViTPreprocessPipeline.get_base_eval_transform()
         elif type == "train":
@@ -69,11 +71,11 @@ class ViTImageDataset(Dataset):
         transformed_bboxes = transformed["bboxes"]
         transformed_labels = int(transformed["class_labels"][0])
 
-        one_hot_cls = torch.zeros((200))  # TODO abstact the number of classes
+        one_hot_cls = torch.zeros((class_count), dtype=torch.float)
         one_hot_cls[transformed_labels - 1] = 1.0
 
         labels = {
-            "bbox": torch.tensor(transformed_bboxes),
+            "bbox": torch.tensor(transformed_bboxes, dtype=torch.float),
             "cls": one_hot_cls
         }
 
@@ -93,14 +95,14 @@ class ViTImageDataset(Dataset):
             RuntimeError: On errors reading data, image, or generating embeddings.
         """
         try:
-            row = self._labels.loc[idx]
-            img_path = row["image_path"]
-            class_id = row["class_id"]
+            row = self._labels.iloc[idx]
+            img_path: str = row["image_path"]
+            class_id: int = row["class_id"]
             xmin = row["x"]
             ymin = row["y"]
             width = row["width"]
             height = row["height"]
-            bbox = [float(xmin), float(ymin), float(width), float(height)]
+            bbox: list[float] = [xmin, ymin, width, height]
 
         except Exception as e:
             raise RuntimeError(
@@ -114,8 +116,7 @@ class ViTImageDataset(Dataset):
             raise RuntimeError(
                 f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
 
-        transformed_image, labels = self._transform_data(
-            image_np, class_id, bbox)
+        transformed_image, labels = self._transform_data(image_np, class_id, bbox)
 
         try:
             image_features = ViTPreprocessPipeline.vit_image_transform(

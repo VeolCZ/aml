@@ -2,6 +2,7 @@ services:
   app:
     container_name: "aml"
     command: python3 main.py
+    shm_size: "16g"
     build:
       context: .
       dockerfile: Dockerfile

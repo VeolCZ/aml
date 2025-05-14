@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 import torchvision.transforms.functional as F
 from numpy.typing import NDArray
-from preprocessing.ViTImageDataset import DatasetType, LabelType
+from preprocessing.ViTImageDataset import DatasetType, LabelType, d_type, use_cols, class_count
 from preprocessing.TreePrerocessPipeline import TreePrerocessPipeline
 from torch.utils.data import Dataset
 from torchvision.io import read_image
@@ -28,7 +28,7 @@ class TreeImageDataset(Dataset):
         Raises:
             RuntimeError: Invalid dataset type.
         """
-        self._labels = pd.read_csv("/data/labels.csv")
+        self._labels = pd.read_csv("/data/labels.csv", dtype=d_type, usecols=use_cols)
         if type == "eval":
             self._base_transform = TreePrerocessPipeline.get_base_eval_transform()
         elif type == "train":
@@ -63,16 +63,13 @@ class TreeImageDataset(Dataset):
         transformed_bboxes = transformed["bboxes"]
         transformed_labels = transformed["class_labels"]
 
-        if not transformed_bboxes:
-            labels = {
-                "bbox": torch.empty((0, 4), dtype=torch.float32),
-                "cls": torch.empty((0,), dtype=torch.int64)
-            }
-        else:
-            labels = {
-                "bbox": torch.tensor(transformed_bboxes, dtype=torch.float32),
-                "cls": torch.tensor(transformed_labels, dtype=torch.int16)
-            }
+        one_hot_cls = torch.zeros((class_count), dtype=torch.float)
+        one_hot_cls[transformed_labels - 1] = 1.0
+
+        labels = {
+            "bbox": torch.tensor(transformed_bboxes, dtype=torch.float),
+            "cls": one_hot_cls
+        }
 
         return transformed_image, labels
 
@@ -93,16 +90,13 @@ class TreeImageDataset(Dataset):
         """
         try:
             row = self._labels.iloc[idx]
-            img_path_value = row["image_path"]
-            class_id_value = row["class_id"]
+            img_path: str = row["image_path"]
+            class_id: int = row["class_id"]
             xmin = row["x"]
             ymin = row["y"]
             width = row["width"]
             height = row["height"]
-
-            img_path = str(img_path_value)
-            label = int(class_id_value)
-            bbox = [float(xmin), float(ymin), float(width), float(height)]
+            bbox: list[float] = [xmin, ymin, width, height]
 
         except Exception as e:
             raise RuntimeError(f"Error reading data for index {idx} from DataFrame: {e}")
@@ -114,7 +108,7 @@ class TreeImageDataset(Dataset):
         except Exception as e:
             raise RuntimeError(f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
 
-        transformed_image, labels = self._transform_data(image_np, label, bbox)
+        transformed_image, labels = self._transform_data(image_np, class_id, bbox)
 
         try:
             image_numpy_hwc = transformed_image.permute(1, 2, 0).numpy()
