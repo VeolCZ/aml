@@ -19,10 +19,13 @@ class RandomForest(ABC):
         """
         Initializes the RandomForest instance.
         Sets up the model and data containers.
+        Args:
+            cross_val(bool): Wheter crossvalidation will be applied.
         """
         self.x: list[NDArray] = []
         self.y: list[LabelType] = []
         self.model = self._init_model()
+
 
     @abstractmethod
     def _init_model(self) -> RandomForestClassifier | RandomForestRegressor:
@@ -61,21 +64,7 @@ class RandomForest(ABC):
             self.x.extend(x_batch)
             self.y.extend(y_batch)
 
-    def cross_validation(self, n_splits: int):
-        """
-        Performs cross-validation on the dataset.
-        Args:
-            n_splits (int): The number of splits for cross-validation.
-        """
-        target = self._get_target_key()
-        kfold = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=5, random_state=42)
-        for train_index, test_index in kfold.split(self.x, [label[target] for label in self.y]):
-            x_train, x_test = [self.x[i] for i in train_index], [self.x[i] for i in test_index]
-            y_train, y_test = [self.y[i][target] for i in train_index], [self.y[i][target] for i in test_index]
-            # Perform training and evaluation here
-        return x_train, x_test, y_train, y_test
-
-    def fit(self, test_size: float = 0.2, cross_validate: bool = True) -> float:
+    def fit(self, test_size: float = 0.2) -> float:
         """
         Fits the Random Forest model to the training data.
         Args:
@@ -86,12 +75,7 @@ class RandomForest(ABC):
             float: The f1 score of the model on the test data.
         """
         target = self._get_target_key()
-        if cross_validate:
-            print("cross validation has begun")
-            x_train, x_test, y_train, y_test = self.cross_validation(int(1/test_size))
-        else:
-            x_train, x_test, y_train, y_test = train_test_split(
-                self.x,
+        x_train, x_test, y_train, y_test = train_test_split(self.x,
             [label[target] for label in self.y],
             test_size=test_size,
             stratify=[label["cls"] for label in self.y],
@@ -116,6 +100,27 @@ class RandomForest(ABC):
         preds = self.model.predict(x)
         return [torch.tensor(p) for p in preds]
 
+    def cross_validation(self):
+        """
+        Performs cross-validation on the dataset.
+        Args:
+            n_splits (int): The number of splits for cross-validation.
+        """
+        target = self._get_target_key()
+        scores = []
+        kfold = RepeatedStratifiedKFold(n_splits=2, n_repeats=2, random_state=42)
+        for train_index, test_index in kfold.split(self.x, [label["cls"] for label in self.y]):
+            x_train, x_test = [self.x[i] for i in train_index], [self.x[i] for i in test_index]
+            y_train, y_test = [self.y[i][target] for i in train_index], [self.y[i][target] for i in test_index]
+            # Perform training and evaluation here
+            self.model.fit(x_train, [y.squeeze() for y in y_train])
+            y_pred = self.predict(x_test)
+            score = self._compute_metrics([y.squeeze() for y in y_test], y_pred)
+            scores.append(score)
+        avg_score = sum(scores) / len(scores)
+        print(f"Average Cross-validation score is: {avg_score}")
+        return score
+
     def save_model(self, path: str) -> None:
         """
         Saves the trained model to the specified path.
@@ -134,7 +139,7 @@ class RandomForest(ABC):
         self.model = joblib.load(path)
         print(f"Model loaded from {path}")
 
-    def train_forest(self) -> None:
+    def train_forest(self, cross_validation: bool = True) -> None:
         """
         Trains the Random Forest model on the training data.
         This method loads the data, fits the model, and saves it to a file.
@@ -142,7 +147,10 @@ class RandomForest(ABC):
         print("Loading data...")
         self._load_data()
         print("Data loaded.")
-        score = self.fit()
+        if cross_validation:
+            score = self.cross_validation()
+        else:
+            score = self.fit()
         print("Training complete. Score:", score)
 
     def evaluate(self, x: list[torch.Tensor], y_ground: list[torch.Tensor]) -> float:

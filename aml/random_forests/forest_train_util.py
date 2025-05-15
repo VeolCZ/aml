@@ -8,7 +8,7 @@ def train_classifier_forest() -> None:
     """
     PATH = "/logs/forest_classifier.pkl"
     forest = RandomForestClassifierModel()
-    forest.train_forest()
+    forest.train_forest(cross_validation=True)
     forest.save_model(PATH)
     forest.evaluate_forest(PATH)
 
@@ -19,6 +19,6 @@ def train_regressor_forest() -> None:
     """
     PATH = "/logs/forest_regressor.pkl"
     forest = RandomForestRegressorModel()
-    forest.train_forest()
+    forest.train_forest(cross_validation=True)
     forest.save_model(PATH)
     forest.evaluate_forest(PATH)
