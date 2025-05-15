@@ -1,10 +1,11 @@
 #TODO
-- top-k accuracy (top-1, top-5, top-10)
-- The inference speed (timing how long the model takes to predict)
-- ROC & AUROC (plots)
-- loss plot
-- early stopping
-- research about the space, if makes sense, implement it
+- top-k accuracy (top-1, top-5, top-10) -> probably done
+- k-fold -> absolutely not working
+- The inference speed (timing how long the model takes to predict)? -> done
+- ROC & AUROC (plots) -> sklearn, probably no
+- loss plot -> fixxxed
+- early stopping -> not really for trees as it doesn't make too much sense
+- research about the space, if makes sense, implement it -> does it?
 
 FOR FRIDAY:
 ViT mumbo jumbo
