@@ -1,8 +1,11 @@
 import torch
 import joblib
 from numpy.typing import NDArray
+import numpy as np
 from abc import ABC, abstractmethod
-from sklearn.model_selection import train_test_split, RepeatedStratifiedKFold
+from matplotlib import pyplot as plt
+from sklearn.model_selection import train_test_split, RepeatedStratifiedKFold, StratifiedKFold, learning_curve
+import time
 from torch.utils.data import DataLoader
 from preprocessing.ViTImageDataset import LabelType
 from preprocessing.TreeImageDataset import TreeImageDataset
@@ -69,23 +72,22 @@ class RandomForest(ABC):
         Fits the Random Forest model to the training data.
         Args:
             test_size (float): The proportion of the dataset to include in the test split.
-            cross_validate(bool): Whether cross validation should be applied, the number of splits is
-            1/test_size.
         Returns:
-            float: The f1 score of the model on the test data.
+            float: The score of the model on the test data.
         """
         target = self._get_target_key()
+        start_fit_time = time.perf_counter()
         x_train, x_test, y_train, y_test = train_test_split(self.x,
             [label[target] for label in self.y],
             test_size=test_size,
             stratify=[label["cls"] for label in self.y],
             )
         print("Fitting Model, this will take a while...")
-        print(y_train)
-        print(y_test)
         y_train = [y.squeeze() for y in y_train]
         y_test = [y.squeeze() for y in y_test]
         self.model.fit(x_train, y_train)
+        start_predict_time= time.perf_counter()
+        print(f"Model fitted in {start_predict_time - start_fit_time:.2f} seconds")
         y_pred = self.predict(x_test)
         return self._compute_metrics(y_test, y_pred)
 
@@ -108,6 +110,7 @@ class RandomForest(ABC):
         """
         target = self._get_target_key()
         scores = []
+        start_c_time = time.perf_counter()
         kfold = RepeatedStratifiedKFold(n_splits=2, n_repeats=2, random_state=42)
         for train_index, test_index in kfold.split(self.x, [label["cls"] for label in self.y]):
             x_train, x_test = [self.x[i] for i in train_index], [self.x[i] for i in test_index]
@@ -118,8 +121,49 @@ class RandomForest(ABC):
             score = self._compute_metrics([y.squeeze() for y in y_test], y_pred)
             scores.append(score)
         avg_score = sum(scores) / len(scores)
+        end_c_time = time.perf_counter()
+        print(f"Cross validation done in {end_c_time - start_c_time:.2f}s")
         print(f"Average Cross-validation score is: {avg_score}")
         return score
+    
+    def plot_learning_curve(self, steps: int=5, cv_folds:int = 3) -> None:
+        target = self._get_target_key()
+        x = self.x
+        y_all = [label[target].squeeze() for label in self.y]
+        y_cls = [label["cls"] for label in self.y]
+
+        train_sizes = np.linspace(0.1, 1.0, steps)
+        train_scores = []
+        val_scores = []
+
+        stratkfold = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
+        for i in train_sizes:
+            train_size = int(len(x) * i)
+            x_i = x[:train_size]
+            y_i = y_all[:train_size]
+            y_cls_i = y_cls[:train_size]
+            train_scores_fold = []
+            val_scores_fold = []
+
+            for train_idx, val_idx in stratkfold.split(x_i, y_cls_i):
+                x_train, x_val = [x_i[i] for i in train_idx], [x_i[i] for i in val_idx]
+                y_train, y_val = [y_i[i] for i in train_idx], [y_i[i] for i in val_idx]
+
+                self.model.fit(x_train, y_train)
+                train_score = self.model.score(x_train, y_train)
+                val_score = self.model.score(x_val, y_val)
+
+                train_scores_fold.append(train_score)
+                val_scores_fold.append(val_score)
+
+        plt.plot(train_sizes, train_scores, label='Training Score')
+        plt.plot(train_sizes, val_scores, label='Validation Score')
+        plt.xlabel('Training Set Size')
+        plt.ylabel('Accuracy')
+        plt.title('Learning Curve for Random Forest')
+        plt.legend()
+        plt.grid()
+        plt.show()
 
     def save_model(self, path: str) -> None:
         """
