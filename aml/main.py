@@ -3,6 +3,7 @@ import sys
 from ViT.ViT_utils import optimize_hyperparameters, train_vit
 from make_visualisations import make_visualization
 from make_labels import make_labels
+from random_forests.forest_train_util import train_classifier_forest, train_regressor_forest
 
 
 logging.basicConfig(
@@ -21,11 +22,13 @@ def help_func() -> None:
 
 
 command_map = {
+    "--help": (help_func, "Shows this help message"),
     "--make_labels": (make_labels, "Creates a labels.csv file in /data"),
     "--make_visualization": (make_visualization, "Create visualizations of /data"),
-    "--help": (help_func, "Shows this help message"),
     "--test_vit": (train_vit, "tests vit"),
     "--optimize_hyperparams": (optimize_hyperparameters, "Optimize hyperparameters for ViT"),
+    "--forest_regressor": (train_regressor_forest, "Run the random forest regressor training"),
+    "--forest_classifier": (train_classifier_forest, "Run the random forest classifier training"),
 }
 
 
@@ -45,4 +48,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    train_classifier_forest()
