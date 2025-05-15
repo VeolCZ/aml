@@ -2,7 +2,7 @@ import torch
 import joblib
 from numpy.typing import NDArray
 from abc import ABC, abstractmethod
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, RepeatedStratifiedKFold
 from torch.utils.data import DataLoader
 from preprocessing.ViTImageDataset import LabelType
 from preprocessing.TreeImageDataset import TreeImageDataset
@@ -52,26 +52,53 @@ class RandomForest(ABC):
         This method uses the DataLoader to load the data in batches.
         """
         train_dataloader = DataLoader(TreeImageDataset("train"), collate_fn=self._collate)
+        idx = 0
         for x_batch, y_batch in train_dataloader:
+            idx += 1
+            if idx >= 50:
+                print("Karolina's computer likes to live")
+                break
             self.x.extend(x_batch)
             self.y.extend(y_batch)
 
-    def fit(self, test_size: float = 0.2) -> float:
+    def cross_validation(self, n_splits: int):
+        """
+        Performs cross-validation on the dataset.
+        Args:
+            n_splits (int): The number of splits for cross-validation.
+        """
+        target = self._get_target_key()
+        kfold = RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=5, random_state=42)
+        for train_index, test_index in kfold.split(self.x, [label[target] for label in self.y]):
+            x_train, x_test = [self.x[i] for i in train_index], [self.x[i] for i in test_index]
+            y_train, y_test = [self.y[i][target] for i in train_index], [self.y[i][target] for i in test_index]
+            # Perform training and evaluation here
+        return x_train, x_test, y_train, y_test
+
+    def fit(self, test_size: float = 0.2, cross_validate: bool = True) -> float:
         """
         Fits the Random Forest model to the training data.
         Args:
             test_size (float): The proportion of the dataset to include in the test split.
+            cross_validate(bool): Whether cross validation should be applied, the number of splits is
+            1/test_size.
         Returns:
-            float: The accuracy score of the model on the test data.
+            float: The f1 score of the model on the test data.
         """
         target = self._get_target_key()
-        x_train, x_test, y_train, y_test = train_test_split(
-            self.x,
+        if cross_validate:
+            print("cross validation has begun")
+            x_train, x_test, y_train, y_test = self.cross_validation(int(1/test_size))
+        else:
+            x_train, x_test, y_train, y_test = train_test_split(
+                self.x,
             [label[target] for label in self.y],
             test_size=test_size,
             stratify=[label["cls"] for label in self.y],
-        )
+            )
         print("Fitting Model, this will take a while...")
+        print(y_train)
+        print(y_test)
         y_train = [y.squeeze() for y in y_train]
         y_test = [y.squeeze() for y in y_test]
         self.model.fit(x_train, y_train)

@@ -1,0 +1,12 @@
+#TODO
+- top-k accuracy (top-1, top-5, top-10)
+- The inference speed (timing how long the model takes to predict)
+- ROC & AUROC (plots)
+- loss plot
+- early stopping
+- research about the space, if makes sense, implement it
+
+FOR FRIDAY:
+ViT mumbo jumbo
+
+
