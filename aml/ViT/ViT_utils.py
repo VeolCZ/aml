@@ -16,7 +16,6 @@ def train_vit() -> None:
     torch.manual_seed(SEED)
     batch_size = 350
     device = torch.device("cuda")
-    epochs = 2
     model_path = f"/data/ViT_{datetime.utcnow()}"
 
     # Datasets
@@ -25,58 +24,45 @@ def train_vit() -> None:
 
     all_labels = train_dataset.get_cls_labels()
 
-    train_indices, temp_indices, _, temp_labels = train_test_split(
+    train_indices, test_indices, _, _ = train_test_split(
         np.arange(len(train_dataset)),
         all_labels,
-        test_size=0.2,
+        test_size=0.1,
         stratify=all_labels,
         random_state=SEED
     )
 
-    val_indices, test_indices, _, _ = train_test_split(
-        temp_indices,
-        temp_labels,
-        test_size=0.5,
-        stratify=temp_labels,
-        random_state=SEED
-    )
-
-    train_dataset = Subset(train_dataset, train_indices)  # 80%
-    val_dataset = Subset(eval_dataset, val_indices)  # 10%
-    test_dataset = Subset(eval_dataset, test_indices)  # 10%
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
-                              num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True,
-                            num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True,
-                             num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
+    train_dataset_subset = Subset(train_dataset, train_indices)
+    # test_dataset = Subset(eval_dataset, test_indices)
+    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True,
+    #  num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
 
     # Train the model
     model = ViT()
-    trainer = ViTTrainer(model, train_loader, val_loader, device)
-    trainer.train(epochs=epochs, model_path=model_path, save=True)
+    trainer = ViTTrainer(model, device, train_dataset_subset,
+                         epochs=5, n_splits=2, batch_size=150)
+    trainer.train(model_path=model_path, save=False)
 
     # Test the model
     # model.load_state_dict(torch.load("/data/ViT_2025-05-14 16:05:31.936127ValLoss_1.92.pth")).to(device)
 
-    total = 0
-    correct = 0
-    for images, labels in test_loader:
-        model.eval()
-        images = images.to(device)
-        bbox, cls = model(images)
+    # total = 0
+    # correct = 0
+    # for images, labels in test_loader:
+    # model.eval()
+    # images = images.to(device)
+    # bbox, cls = model(images)
 
-        predicted_class_indices = cls.argmax(-1)
-        actual_class_ids_batch = labels["cls"].argmax(-1).to(device)
+    # predicted_class_indices = cls.argmax(-1)
+    # actual_class_ids_batch = labels["cls"].argmax(-1).to(device)
 
-        for k_in_batch in range(len(predicted_class_indices)):
-            # assert k_in_batch < 128
-            pred_idx = predicted_class_indices[k_in_batch].item()
-            actual_cls_id = actual_class_ids_batch[k_in_batch].item()
+    # for k_in_batch in range(len(predicted_class_indices)):
+    # # assert k_in_batch < 128
+    # pred_idx = predicted_class_indices[k_in_batch].item()
+    # actual_cls_id = actual_class_ids_batch[k_in_batch].item()
 
-            if pred_idx == actual_cls_id:
-                correct += 1
-            total += 1
-            print(f"Predicted: {pred_idx}, Actual: {actual_cls_id}")
-    print(f"Accuracy {correct / total}")
+    # if pred_idx == actual_cls_id:
+    # correct += 1
+    # total += 1
+    # print(f"Predicted: {pred_idx}, Actual: {actual_cls_id}")
+    # print(f"Accuracy {correct / total}")
