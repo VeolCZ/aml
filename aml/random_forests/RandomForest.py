@@ -61,13 +61,13 @@ class RandomForest(ABC):
         idx = 0
         for x_batch, y_batch in train_dataloader:
             idx += 1
-            if idx >= 50:
+            if idx >= 1300:
                 print("Karolina's computer likes to live")
                 break
             self.x.extend(x_batch)
             self.y.extend(y_batch)
 
-    def fit(self, test_size: float = 0.2) -> float:
+    def fit(self, test_size: float = 0.2, printing=False) -> float:
         """
         Fits the Random Forest model to the training data.
         Args:
@@ -82,7 +82,8 @@ class RandomForest(ABC):
             test_size=test_size,
             stratify=[label["cls"] for label in self.y],
             )
-        print("Fitting Model, this will take a while...")
+        if printing:
+            print("Fitting Model, this will take a while...")
         y_train = [y.squeeze() for y in y_train]
         y_test = [y.squeeze() for y in y_test]
         self.model.fit(x_train, y_train)
@@ -150,20 +151,25 @@ class RandomForest(ABC):
                 y_train, y_val = [y_i[i] for i in train_idx], [y_i[i] for i in val_idx]
 
                 self.model.fit(x_train, y_train)
-                train_score = self.model.score(x_train, y_train)
-                val_score = self.model.score(x_val, y_val)
+                train_score = self.evaluate(x_train, y_train)
+                val_score = self.evaluate(x_val, y_val)
 
                 train_scores_fold.append(train_score)
                 val_scores_fold.append(val_score)
 
+            train_scores.append(np.mean(train_scores_fold))
+            val_scores.append(np.mean(val_scores_fold))
+
         plt.plot(train_sizes, train_scores, label='Training Score')
         plt.plot(train_sizes, val_scores, label='Validation Score')
         plt.xlabel('Training Set Size')
-        plt.ylabel('Accuracy')
+        plt.ylabel(f'Eval Metric: {"Accuracy" if self._get_target_key == "cls" else "IOU"} ')
         plt.title('Learning Curve for Random Forest')
         plt.legend()
         plt.grid()
+        plt.savefig("learning_curve.png")
         plt.show()
+        print("Learning curve plotted.")
 
     def save_model(self, path: str) -> None:
         """
@@ -194,7 +200,7 @@ class RandomForest(ABC):
         if cross_validation:
             score = self.cross_validation()
         else:
-            score = self.fit()
+            score = self.fit(printing=True)
         print("Training complete. Score:", score)
 
     def evaluate(self, x: list[torch.Tensor], y_ground: list[torch.Tensor]) -> float:

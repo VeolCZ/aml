@@ -1,5 +1,5 @@
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import f1_score, top_k_accuracy_score
+from sklearn.metrics import accuracy_score, top_k_accuracy_score
 import torch
 from typing import List
 from .RandomForest import RandomForest
@@ -34,8 +34,8 @@ class RandomForestClassifierModel(RandomForest):
         #print(f"Top 5 accuracy: {top_5}")
         #top_10 = top_k_accuracy_score(y_test, y_pred, k=1)
         #print(f"Top 10 accuracy: {top_10}")
-        f1 = float(f1_score(y_test, y_pred))
-        return f1
+        acc = float(accuracy_score(y_test, y_pred))
+        return acc
 
     def _get_target_key(self) -> str:
         return "cls"
