@@ -1,19 +1,44 @@
 import logging
 import math
-import multiprocessing
 import os
-from typing import Any, Generator
 import torch
 import copy
 import torchvision
+import multiprocessing
 from ViT.ViT import ViT
+from typing import Generator
 from sklearn.model_selection import RepeatedKFold
 from torch.utils.data import DataLoader, Subset
 from preprocessing.ViTImageDataset import LabelType, ViTImageDataset
 
 
 class ViTTrainer:
-    def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, lr: float = 0.001, n_splits: int = 5, epochs: int = 5, batch_size: int = 32) -> None:
+    """
+    A trainer class for fine-tuning a Vision Transformer (ViT) model for a task
+    involving both bounding box regression and classification using K-Fold
+    cross-validation and early stopping.
+
+    Assumes the ViT model has separate heads for bounding box prediction
+    (`bbox_head`) and classification (`cls_head`).
+    """
+
+    def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, lr: float = 0.001, n_splits: int = 5, epochs: int = 5, batch_size: int = 32, patience: int = 2) -> None:
+        """
+        Initializes the ViTTrainer.
+
+        Args:
+            model (ViT): The Vision Transformer model to train.
+            device (torch.device): The device to train on (e.g., 'cuda' or 'cpu').
+            dataset (ViTImageDataset): The dataset to use for training and validation.
+            lr (float, optional): The initial learning rate for the optimizer. Defaults to 0.001.
+            n_splits (int, optional): The number of splits for K-Fold cross-validation. Defaults to 5.
+            epochs (int, optional): The total number of training epochs (or more accurately,
+                                    the number of distinct K-Fold splits to use for training).
+                                    Defaults to 5.
+            batch_size (int, optional): The batch size for data loaders. Defaults to 32.
+            patience (int, optional): The number of epochs with no improvement on validation
+                                      loss after which training will be stopped. Defaults to 2.
+        """
         self.model = model
         self.model.to(device=device)
         self.device = device
@@ -24,9 +49,26 @@ class ViTTrainer:
         self.epochs = epochs
         self._logger = logging.getLogger(self.__class__.__name__)
         self.SEED = int(os.getenv("SEED", 123))
+        self.patience = patience
         torch.manual_seed(self.SEED)
 
     def get_loaders(self) -> Generator[tuple[DataLoader, DataLoader], None, None]:
+        """
+        Generates pairs of training and validation DataLoaders for each split
+        of Repeated K-Fold cross-validation.
+
+        The number of repeats is calculated such that there are at least
+        'epochs' total splits generated. The main training loop in `train`
+        will consume exactly `epochs` splits from this generator.
+
+        Yields:
+            Generator[Tuple[DataLoader, DataLoader], None, None]: A generator
+            yielding tuples of (train_loader, val_loader) for each split.
+        """
+        # assert self.epochs % self.n_splits == 0, "Number of epochs must be divisible by number of splits"
+
+        # kfold = RepeatedKFold(n_splits=self.n_splits, n_repeats=self.epochs//self.n_splits,
+        #   random_state=self.SEED)
         kfold = RepeatedKFold(n_splits=self.n_splits, n_repeats=math.ceil(self.epochs/self.n_splits),
                               random_state=self.SEED)
 
@@ -40,7 +82,26 @@ class ViTTrainer:
 
             yield train_loader, val_loader
 
-    def train(self, model_path: str, save: bool = False) -> None:
+    def train(self, model_path: str = "/logs/model", save: bool = False) -> float:
+        """
+        Trains the ViT model using the configured K-Fold cross-validation setup
+        and early stopping.
+
+        Optimizes only the parameters of the classification and bounding box
+        heads of the model.
+
+        Args:
+            model_path (str, optional): The base path to save the best model checkpoint.
+                                        Defaults to "/logs/model".
+            save (bool, optional): Whether to save the best model checkpoint. Defaults to False.
+
+        Returns:
+            float: The best validation loss achieved during training.
+
+        Raises:
+            StopIteration: If the loader generator runs out of splits before
+                           completing the specified number of 'epochs' (splits).
+        """
         optimizer = torch.optim.AdamW(
             [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()], lr=self.lr)
 
@@ -53,25 +114,35 @@ class ViTTrainer:
         best_val_loss = float("inf")
         best_model = copy.deepcopy(self.model.state_dict())
 
+        current_patience = 0
         loader_generator = self.get_loaders()
         for epoch in range(self.epochs):
             train_loader, val_loader = next(loader_generator)
 
             bbox_loss, cls_los, val_bbox_loss, val_cls_loss = self.train_epoch(
-                optimizer, scheduler, bbox_criterion, cls_criterion, train_loader, val_loader)
+                optimizer, bbox_criterion, cls_criterion, train_loader, val_loader)
+            scheduler.step()
 
             val_loss = float((val_bbox_loss + val_cls_loss).item())
             if val_loss <= best_val_loss:
                 best_val_loss = val_loss
                 best_model = copy.deepcopy(self.model.state_dict())
+                current_patience = 0
+            else:
+                current_patience += 1
 
             self._logger.info(
-                f"Epoch {epoch + 1}/{self.epochs} - "
-                f"Train bbox loss: {bbox_loss.item():.4f}, "
-                f"Train cls loss: {cls_los.item():.4f}, "
-                f"Val bbox loss: {val_bbox_loss.item():.4f}, "
+                f"Epoch {epoch + 1}/{self.epochs} - " +
+                f"Train bbox loss: {bbox_loss.item():.4f}, " +
+                f"Train cls loss: {cls_los.item():.4f}, " +
+                f"Val bbox loss: {val_bbox_loss.item():.4f}, " +
                 f"Val cls loss: {val_cls_loss.item():.4f}"
             )
+
+            if current_patience == self.patience:
+                self._logger.info(
+                    f"Early stopping at epoch {epoch + 1} with patience {self.patience}")
+                break
 
         if best_model:
             self.model.load_state_dict(best_model)
@@ -79,12 +150,31 @@ class ViTTrainer:
             torch.save(best_model, model_path +
                        f"ValLoss_{round(val_loss, 2)}" + ".pth")
 
-    def train_epoch(self, optimizer: torch.optim.AdamW, scheduler: torch.optim.lr_scheduler.CosineAnnealingLR,  bbox_criterion: torchvision.ops.complete_box_iou_loss, cls_criterion: torch.nn.CrossEntropyLoss,  train_loader: DataLoader, val_loader: DataLoader) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        return best_val_loss
+
+    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.complete_box_iou_loss, cls_criterion: torch.nn.CrossEntropyLoss,  train_loader: DataLoader, val_loader: DataLoader) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
-        Train the model for one epoch.
+        Trains and validates the model for one K-Fold split (equivalent to one
+        epoch in the main training loop).
+
+        This method performs one full pass over the training data subset for
+        the current split and one full pass over the validation data subset.
 
         Args:
-            epoch (int): Current epoch number.
+            optimizer (torch.optim.Optimizer): The optimizer to use for training.
+            bbox_criterion (Callable): The loss function for bounding box regression.
+                                       Expected to take predicted and target boxes.
+            cls_criterion (torch.nn.CrossEntropyLoss): The loss function for classification.
+                                                       Expected to take predicted logits and target classes.
+            train_loader (DataLoader): The data loader for the training subset of the current split.
+            val_loader (DataLoader): The data loader for the validation subset of the current split.
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+            Returns the training bbox loss, training classification loss,
+            validation bbox loss, and validation classification loss.
+            NOTE: These are the losses from the last batch of the
+            respective loops, not the average over the entire dataset subset.
         """
         self.model.train()
         images: torch.Tensor
@@ -115,5 +205,4 @@ class ViTTrainer:
                 val_cls_loss: torch.Tensor = cls_criterion(
                     val_cls, input_cls)
 
-        scheduler.step()
         return bbox_loss, cls_loss, val_bbox_loss, val_cls_loss
