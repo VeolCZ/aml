@@ -22,7 +22,7 @@ class ViTTrainer:
     (`bbox_head`) and classification (`cls_head`).
     """
 
-    def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, lr: float = 0.001, n_splits: int = 5, epochs: int = 5, batch_size: int = 32, patience: int = 2) -> None:
+    def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, lr: float = 0.001, n_splits: int = 5, epochs: int = 5, batch_size: int = 32, patience: int = 2, annealing_rate: float = 0.000001) -> None:
         """
         Initializes the ViTTrainer.
 
@@ -38,6 +38,7 @@ class ViTTrainer:
             batch_size (int, optional): The batch size for data loaders. Defaults to 32.
             patience (int, optional): The number of epochs with no improvement on validation
                                       loss after which training will be stopped. Defaults to 2.
+            annealing_rate (float, optional): The initial learning rate for the cosine anealer. Defaults to 0.000001.
         """
         self.model = model
         self.model.to(device=device)
@@ -50,6 +51,7 @@ class ViTTrainer:
         self._logger = logging.getLogger(self.__class__.__name__)
         self.SEED = int(os.getenv("SEED", 123))
         self.patience = patience
+        self.annealing_rate = annealing_rate
         torch.manual_seed(self.SEED)
 
     def get_loaders(self) -> Generator[tuple[DataLoader, DataLoader], None, None]:
@@ -106,7 +108,7 @@ class ViTTrainer:
             [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()], lr=self.lr)
 
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=self.epochs, eta_min=self.lr / 100)
+            optimizer, T_max=self.epochs, eta_min=self.annealing_rate)
 
         bbox_criterion = torchvision.ops.complete_box_iou_loss
         cls_criterion = torch.nn.CrossEntropyLoss()
@@ -136,7 +138,8 @@ class ViTTrainer:
                 f"Train bbox loss: {bbox_loss.item():.4f}, " +
                 f"Train cls loss: {cls_los.item():.4f}, " +
                 f"Val bbox loss: {val_bbox_loss.item():.4f}, " +
-                f"Val cls loss: {val_cls_loss.item():.4f}"
+                f"Val cls loss: {val_cls_loss.item():.4f} " +
+                f"Best loss: {best_val_loss:.4f}"
             )
 
             if current_patience == self.patience:
@@ -152,7 +155,9 @@ class ViTTrainer:
 
         return best_val_loss
 
-    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.complete_box_iou_loss, cls_criterion: torch.nn.CrossEntropyLoss,  train_loader: DataLoader, val_loader: DataLoader) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.complete_box_iou_loss,
+                    cls_criterion: torch.nn.CrossEntropyLoss,  train_loader: DataLoader,
+                    val_loader: DataLoader) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Trains and validates the model for one K-Fold split (equivalent to one
         epoch in the main training loop).

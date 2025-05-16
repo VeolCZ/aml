@@ -61,7 +61,7 @@ class TreeImageDataset(Dataset):
         )
         transformed_image = transformed["image"]
         transformed_bboxes = transformed["bboxes"]
-        transformed_labels = transformed["class_labels"]
+        transformed_labels = int(transformed["class_labels"][0])
 
         one_hot_cls = torch.zeros((class_count), dtype=torch.float)
         one_hot_cls[transformed_labels - 1] = 1.0

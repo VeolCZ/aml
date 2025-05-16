@@ -57,7 +57,8 @@ class TreePrerocessPipeline:
                              min_visibility=0.2,
                              min_area=10,
                              clip=True
-                         )
+                         ),
+                         seed=SEED
                          )
 
     @staticmethod
@@ -86,7 +87,8 @@ class TreePrerocessPipeline:
                              min_visibility=0.2,
                              min_area=10,
                              clip=True
-                         )
+                         ),
+                         seed=SEED
                          )
 
     @staticmethod

@@ -37,33 +37,33 @@ def train_vit() -> None:
     # Config
     SEED = int(os.getenv("SEED", 123))
     torch.manual_seed(SEED)
-    batch_size = 350
+    # batch_size = 350
     model_path = f"/data/ViT_{datetime.utcnow()}"
 
     # Datasets
     train_dataset = ViTImageDataset(type="train")
-    eval_dataset = ViTImageDataset(type="eval")
+    # eval_dataset = ViTImageDataset(type="eval")
 
-    all_labels = train_dataset.get_cls_labels()
+    # all_labels = train_dataset.get_cls_labels()
 
-    train_indices, test_indices, _, _ = train_test_split(
-        np.arange(len(train_dataset)),
-        all_labels,
-        test_size=0.1,
-        stratify=all_labels,
-        random_state=SEED
-    )
+    # train_indices, test_indices, _, _ = train_test_split(
+    #     np.arange(len(train_dataset)),
+    #     all_labels,
+    #     test_size=0.1,
+    #     stratify=all_labels,
+    #     random_state=SEED
+    # )
 
-    train_dataset_subset = Subset(train_dataset, train_indices)
-    test_dataset = Subset(eval_dataset, test_indices)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True,
-                             num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
+    # train_dataset_subset = Subset(train_dataset, train_indices)
+    # test_dataset = Subset(eval_dataset, test_indices)
+    # test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True,
+    #                          num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
 
     # Train the model
-    model = ViT()
-    trainer = ViTTrainer(model, device, train_dataset_subset,
-                         epochs=20, n_splits=2, batch_size=150)
-    trainer.train(model_path=model_path, save=False)
+    # model = ViT()
+    # trainer = ViTTrainer(model, device, train_dataset_subset,
+    #                      epochs=20, n_splits=2, batch_size=150)
+    # trainer.train(model_path=model_path, save=False)
 
     # Test the model
     # model.load_state_dict(torch.load("/data/ViT_2025-05-14 16:05:31.936127ValLoss_1.92.pth")).to(device)
@@ -90,7 +90,7 @@ def train_vit() -> None:
     # print(f"Accuracy {correct / total}")
 
 
-def optimize_hyperparameters(trial_count: int = 2) -> dict[str, float]:
+def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
     """
     Optimizes hyperparameters for the ViT model using Optuna.
 
@@ -136,22 +136,27 @@ def optimize_hyperparameters(trial_count: int = 2) -> dict[str, float]:
         """
         global device
 
-        number_of_folds = trial.suggest_int("n_of_folds", 5, 10, step=1)
-        learning_rate = trial.suggest_float(
-            "learning_rate", 1e-6, 1e-2, log=True)
+        number_of_folds = trial.suggest_int("n_of_folds", 8, 20, step=2)
+        learning_rate = trial.suggest_float("learning_rate", 1e-5, 1, log=True)
+        annealing_rate = trial.suggest_float("annealing_rate", 1e-8, learning_rate, log=True)
 
-        vit = ViT()
-        trainer = ViTTrainer(vit, device=device, dataset=ViTImageDataset(type="train"),
-                             lr=learning_rate, n_splits=number_of_folds)
+        model = ViT()
+        trainer = ViTTrainer(model, device=device, dataset=ViTImageDataset(type="train"),
+                             lr=learning_rate, n_splits=number_of_folds, epochs=20, batch_size=150,
+                             patience=3, annealing_rate=annealing_rate)
         return trainer.train()
 
-    study = optuna.create_study(direction="minimize")
+    STUDY_NAME = "vit_hyperparams"
+    STORAGE_URL = f"sqlite:////logs/{STUDY_NAME}.db"
+
+    study = optuna.create_study(direction="minimize", load_if_exists=True, study_name=STUDY_NAME,
+                                storage=STORAGE_URL,)
     study.optimize(objective, n_trials=trial_count,
                    show_progress_bar=True, gc_after_trial=True, n_jobs=2)
 
     logger = logging.getLogger("HyperparameterOptimizer")
     study_df = study.trials_dataframe()
-    study_df.to_csv("/logs/study.csv", index=False)
+    study_df.to_csv("/logs/STUDY_NAME.csv", index=False)
     logger.info(study.best_params)
 
     return study.best_params
