@@ -1,6 +1,6 @@
 #TODO
-- top-k accuracy (top-1, top-5, top-10) -> probably done
-- k-fold -> absolutely not working
+- top-k accuracy (top-1, top-5, top-10) -> for sure not working
+- k-fold -> absolutely working
 - The inference speed (timing how long the model takes to predict)? -> done
 - ROC & AUROC (plots) -> sklearn, probably no
 - loss plot -> fixxxed
@@ -9,5 +9,11 @@
 
 FOR FRIDAY:
 ViT mumbo jumbo
-
+time for ViT
+update requirements and docker
+IOU & accuracy for ViT
+tok_k accuracy for ViT
+plotting curves for ViT
+research what to put on tensorboard
+clean up the mess in the docstrings, typehints and print statements
 

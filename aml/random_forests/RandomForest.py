@@ -61,7 +61,7 @@ class RandomForest(ABC):
         idx = 0
         for x_batch, y_batch in train_dataloader:
             idx += 1
-            if idx >= 1300:
+            if idx >= 170:
                 print("Karolina's computer likes to live")
                 break
             self.x.extend(x_batch)
@@ -127,7 +127,7 @@ class RandomForest(ABC):
         print(f"Average Cross-validation score is: {avg_score}")
         return score
     
-    def plot_learning_curve(self, steps: int=5, cv_folds:int = 3) -> None:
+    def plot_learning_curve(self, steps: int=4, cv_folds:int = 3) -> None:
         target = self._get_target_key()
         x = self.x
         y_all = [label[target].squeeze() for label in self.y]
@@ -163,7 +163,11 @@ class RandomForest(ABC):
         plt.plot(train_sizes, train_scores, label='Training Score')
         plt.plot(train_sizes, val_scores, label='Validation Score')
         plt.xlabel('Training Set Size')
-        plt.ylabel(f'Eval Metric: {"Accuracy" if self._get_target_key == "cls" else "IOU"} ')
+        print(self._get_target_key)
+        if self.model.__class__.__name__ == "RandomForestClassifier":
+            plt.ylabel('Mean Accuracy')
+        elif self.model.__class__.__name__ == "RandomForestRegressor":
+            plt.ylabel('Mean IOU')
         plt.title('Learning Curve for Random Forest')
         plt.legend()
         plt.grid()
