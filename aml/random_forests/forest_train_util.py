@@ -21,5 +21,6 @@ def train_regressor_forest() -> None:
     PATH = "/logs/forest_regressor.pkl"
     forest = RandomForestRegressorModel()
     forest.train_forest(cross_validation=False)
+    forest.plot_learning_curve()
     forest.save_model(PATH)
     forest.evaluate_forest(PATH)

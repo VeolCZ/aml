@@ -10,6 +10,7 @@ from typing import Generator
 from sklearn.model_selection import RepeatedKFold
 from torch.utils.data import DataLoader, Subset
 from preprocessing.ViTImageDataset import LabelType, ViTImageDataset
+from time import perf_counter
 
 
 class ViTTrainer:
@@ -104,6 +105,7 @@ class ViTTrainer:
             StopIteration: If the loader generator runs out of splits before
                            completing the specified number of 'epochs' (splits).
         """
+        vit_train_start = perf_counter()
         optimizer = torch.optim.AdamW(
             [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()],
             lr=self.learning_rate)
@@ -147,7 +149,7 @@ class ViTTrainer:
                 self._logger.info(
                     f"Early stopping at epoch {epoch + 1} with patience {self.patience}")
                 break
-
+        vit_train_end = perf_counter()
         if best_model:
             self.model.load_state_dict(best_model)
         if save:

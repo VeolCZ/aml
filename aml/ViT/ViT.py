@@ -1,5 +1,6 @@
 import torch
 from transformers import ViTForImageClassification
+from sklearn.metrics import top_k_accuracy_score
 
 
 class ViT(torch.nn.Module):
@@ -78,3 +79,59 @@ class ViT(torch.nn.Module):
         bbox = self.bbox_head(backbone)
         cls = self.cls_head(backbone)
         return bbox, cls
+    
+    def evaluate(self,predictions:tuple[torch.Tensor, torch.Tensor] , label:tuple[torch.Tensor, torch.Tensor])->tuple[float]:
+        """
+        Evaluates the model using Intersection over union, top k accuracy.
+        ARGS:
+        Predictions(Tuple[torch.Tensor, torch.Tensor]): A tuple containing two tensors:
+            - bbox_preds (torch.Tensor): The predicted bounding boxes from bbox_head.
+                                         Shape: (batch_size, 4).
+            - cls_preds (torch.Tensor): The predicted classification logits from cls_head.
+                                        Shape: (batch_size, num_classes).
+        label(Tuple[torch.Tensor, torch.Tensor]): A tuple containing two tensors:
+            - bbox_label (torch.Tensor): The labeled bounding boxes.
+                                         Shape: (batch_size, 4). This batch_size should be the same as batchsize of predictions.
+            - cls_label (torch.Tensor): The labeled bounding boxes.
+                                        Shape: (batch_size). This batch_size should be the same as batchsize of predictions.
+        Returns
+        metric_outcomes(tuple[floats]): tuple in order (multiple IoU, Top1 accuracy, top 5 accuracy, top 10 accuracy)
+        """
+        cls_label= [x for x in range(1,201)]
+
+        bbox_pred = predictions[0]
+        class_pred = predictions[1] 
+        bbox_label = label[0]
+
+        top1_accuracy = top_k_accuracy_score(label[1],class_pred,k=1, label = cls_label)
+        top5_accuracy = top_k_accuracy_score(label[1],class_pred,k=5, label = cls_label)
+        top10_accuracy = top_k_accuracy_score(label[1],class_pred,k=10, label = cls_label)
+
+        iou_sum = 0
+        for batchnum in range(bbox_pred.size[0]):
+            iou_sum+= self.compoute_iou(bbox_pred[batchnum],bbox_label[batchnum])  
+            
+        multiple_iou = iou_sum / bbox_pred.size[0]
+        
+        return multiple_iou, top1_accuracy, top5_accuracy, top10_accuracy
+        
+
+    def compute_iou(self, box1: torch.Tensor, box2: torch.Tensor) -> float:
+        """
+        Computes the Intersection over Union (IoU) of two bounding boxes.
+        Args:
+            box1 (torch.Tensor): The first bounding box.
+            box2 (torch.Tensor): The second bounding box.
+        Returns:
+            float: The IoU score.
+        """
+        x1 = torch.max(torch.tensor([box1[0], box2[0]]))
+        y1 = torch.max(torch.tensor([box1[1], box2[1]]))
+        x2 = torch.min(torch.tensor([box1[2], box2[2]]))
+        y2 = torch.min(torch.tensor([box1[3], box2[3]]))
+
+        inter_area = torch.max(torch.tensor(0), x2 - x1) * torch.max(torch.tensor(0), y2 - y1)
+        box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+        box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+        union_area = box1_area + box2_area - inter_area
+        return float((inter_area / union_area).item()) if union_area > 0 else 0

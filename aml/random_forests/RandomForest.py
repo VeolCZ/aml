@@ -61,7 +61,7 @@ class RandomForest(ABC):
         idx = 0
         for x_batch, y_batch in train_dataloader:
             idx += 1
-            if idx >= 170:
+            if idx >= 70:
                 print("Karolina's computer likes to live")
                 break
             self.x.extend(x_batch)
@@ -113,7 +113,7 @@ class RandomForest(ABC):
         scores = []
         start_c_time = time.perf_counter()
         kfold = RepeatedStratifiedKFold(n_splits=2, n_repeats=2, random_state=42)
-        for train_index, test_index in kfold.split(self.x, [label["cls"] for label in self.y]):
+        for train_index, test_index in kfold.split(self.x, [torch.argmax(label["cls"]).item() for label in self.y]):
             x_train, x_test = [self.x[i] for i in train_index], [self.x[i] for i in test_index]
             y_train, y_test = [self.y[i][target] for i in train_index], [self.y[i][target] for i in test_index]
             # Perform training and evaluation here
@@ -131,7 +131,8 @@ class RandomForest(ABC):
         target = self._get_target_key()
         x = self.x
         y_all = [label[target].squeeze() for label in self.y]
-        y_cls = [label["cls"] for label in self.y]
+        y_cls = [torch.argmax(label["cls"]).item() for label in self.y]
+
 
         train_sizes = np.linspace(0.1, 1.0, steps)
         train_scores = []
@@ -163,7 +164,6 @@ class RandomForest(ABC):
         plt.plot(train_sizes, train_scores, label='Training Score')
         plt.plot(train_sizes, val_scores, label='Validation Score')
         plt.xlabel('Training Set Size')
-        print(self._get_target_key)
         if self.model.__class__.__name__ == "RandomForestClassifier":
             plt.ylabel('Mean Accuracy')
         elif self.model.__class__.__name__ == "RandomForestRegressor":
