@@ -10,7 +10,6 @@ from typing import Generator
 from sklearn.model_selection import RepeatedKFold
 from torch.utils.data import DataLoader, Subset
 from preprocessing.ViTImageDataset import LabelType, ViTImageDataset
-from time import perf_counter
 
 
 class ViTTrainer:
@@ -149,7 +148,7 @@ class ViTTrainer:
                 self._logger.info(
                     f"Early stopping at epoch {epoch + 1} with patience {self.patience}")
                 break
-        vit_train_end = perf_counter()
+
         if best_model:
             self.model.load_state_dict(best_model)
         if save:

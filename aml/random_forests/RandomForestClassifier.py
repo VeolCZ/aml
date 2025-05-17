@@ -29,18 +29,17 @@ class RandomForestClassifierModel(RandomForest):
         Returns:
             float: The accuracy score.
         """
-        #cls_label= [x for x in range(1,201)] # this one is for running the full dataset
-        #test_cls_label = [x for x in range(1,7)] # adjust the number based on the number of classes provided in image_class_labels + 1
-        #best = top_k_accuracy_score(y_test, y_pred, k=1,labels= test_cls_label)
-        #print(f"Best accuracy: {best}")
-        #top_5 = top_k_accuracy_score(y_test, y_pred, k=5,labels= test_cls_label)
-        #print(f"Top 5 accuracy: {top_5}")
-        #top_10 = top_k_accuracy_score(y_test, y_pred, k=10,labels= test_cls_label)
-        #print(f"Top 10 accuracy: {top_10}")
+        # cls_label= [x for x in range(1,201)] # this one is for running the full dataset
+        # test_cls_label = [x for x in range(1,7)] # adjust the number based on the number of classes provided in image_class_labels + 1
+        # best = top_k_accuracy_score(y_test, y_pred, k=1,labels= test_cls_label)
+        # print(f"Best accuracy: {best}")
+        # top_5 = top_k_accuracy_score(y_test, y_pred, k=5,labels= test_cls_label)
+        # print(f"Top 5 accuracy: {top_5}")
+        # top_10 = top_k_accuracy_score(y_test, y_pred, k=10,labels= test_cls_label)
+        # print(f"Top 10 accuracy: {top_10}")
         acc = float(accuracy_score(y_test, y_pred))
         return acc
 
-    
     def find_top_k(self, y_test: List[torch.Tensor], x: List[torch.Tensor]) -> float:
         y_test_array = torch.stack(y_test).numpy() if isinstance(y_test[0], torch.Tensor) else np.array(y_test)
 
@@ -59,9 +58,8 @@ class RandomForestClassifierModel(RandomForest):
 
         if y_pred_array.ndim == 3:
             print("Detected 3D array, reshaping...")
-            y_pred_array = np.transpose(y_pred_array, (1, 0, 2)) 
-            y_pred_array = np.squeeze(y_pred_array)               
-
+            y_pred_array = np.transpose(y_pred_array, (1, 0, 2))
+            y_pred_array = np.squeeze(y_pred_array)
 
         print("y_test shape:", y_test_array.shape)
         print("y_pred shape:", y_pred_array.shape)
@@ -72,6 +70,6 @@ class RandomForestClassifierModel(RandomForest):
         print(f"Top-1 accuracy: {top_1}")
 
         return top_1
-        
+
     def _get_target_key(self) -> str:
         return "cls"

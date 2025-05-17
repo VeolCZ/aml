@@ -29,7 +29,6 @@ class RandomForest(ABC):
         self.y: list[LabelType] = []
         self.model = self._init_model()
 
-
     @abstractmethod
     def _init_model(self) -> RandomForestClassifier | RandomForestRegressor:
         pass
@@ -78,16 +77,16 @@ class RandomForest(ABC):
         target = self._get_target_key()
         start_fit_time = time.perf_counter()
         x_train, x_test, y_train, y_test = train_test_split(self.x,
-            [label[target] for label in self.y],
-            test_size=test_size,
-            stratify=[label["cls"] for label in self.y],
-            )
+                                                            [label[target] for label in self.y],
+                                                            test_size=test_size,
+                                                            stratify=[label["cls"] for label in self.y],
+                                                            )
         if printing:
             print("Fitting Model, this will take a while...")
         y_train = [y.squeeze() for y in y_train]
         y_test = [y.squeeze() for y in y_test]
         self.model.fit(x_train, y_train)
-        start_predict_time= time.perf_counter()
+        start_predict_time = time.perf_counter()
         print(f"Model fitted in {start_predict_time - start_fit_time:.2f} seconds")
         y_pred = self.predict(x_test)
         return self._compute_metrics(y_test, y_pred)
@@ -126,13 +125,12 @@ class RandomForest(ABC):
         print(f"Cross validation done in {end_c_time - start_c_time:.2f}s")
         print(f"Average Cross-validation score is: {avg_score}")
         return score
-    
-    def plot_learning_curve(self, steps: int=4, cv_folds:int = 3) -> None:
+
+    def plot_learning_curve(self, steps: int = 4, cv_folds: int = 3) -> None:
         target = self._get_target_key()
         x = self.x
         y_all = [label[target].squeeze() for label in self.y]
         y_cls = [torch.argmax(label["cls"]).item() for label in self.y]
-
 
         train_sizes = np.linspace(0.1, 1.0, steps)
         train_scores = []
