@@ -11,8 +11,6 @@ from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
 from preprocessing.ViTImageDataset import ViTImageDataset
 
-device = torch.device("cuda")
-
 
 def train_vit() -> None:
     """
@@ -21,9 +19,9 @@ def train_vit() -> None:
     Global variables:
         device (torch.device): The device (CPU or CUDA) on which to perform computations.
     """
-    global device
 
     # Config
+    device = torch.device("cuda")
     SEED = int(os.getenv("SEED", 123))
     torch.manual_seed(SEED)
     batch_size = 350
@@ -75,7 +73,7 @@ def train_vit() -> None:
         actual_class_ids_batch = labels["cls"].argmax(-1).to(device)
 
         for k_in_batch in range(len(predicted_class_indices)):
-            pred_idx: int = predicted_class_indices[k_in_batch].item()
+            pred_idx: int = int(predicted_class_indices[k_in_batch].item())
             actual_cls_id: int = actual_class_ids_batch[k_in_batch].item()
 
             if pred_idx == actual_cls_id:
@@ -113,7 +111,7 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
             float: The objective value to minimize (e.g., loss).
                    The ViTTrainer.train() method is expected to return this.
         """
-        global device
+        device = torch.device("cuda")
 
         number_of_folds = trial.suggest_int("n_of_folds", 8, 20, step=2)
         learning_rate = trial.suggest_float("learning_rate", 1e-5, 1, log=True)

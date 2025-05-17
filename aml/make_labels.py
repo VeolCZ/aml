@@ -19,9 +19,8 @@ def parse_labels(base_path: str) -> pd.DataFrame:
                              sep=" ", header=None, names=["image_id", "is_training"])
     image_labels = pd.read_csv(os.path.join(base_path, "image_class_labels.txt"),
                                sep=" ", header=None, names=["image_id", "class_id"])
-    bounding_boxes_names = ["image_id", "x", "y", "width", "height"]
     bounding_boxes = pd.read_csv(os.path.join(base_path, "bounding_boxes.txt"),
-                                 sep=" ", header=None, names=bounding_boxes_names)
+                                 sep=" ", header=None, names=["image_id", "x", "y", "width", "height"])
     attribute_labels_names = ["image_id", "attribute_id", "is_present", "certainty_id", "time"]
     attribute_labels = pd.read_csv(os.path.join(base_path, "attributes", "image_attribute_labels_clean.txt"),
                                    sep=" ", header=None,
