@@ -1,4 +1,4 @@
-name: Python Quality Checks
+name: Python Checks - flake8
 
 on:
   push:

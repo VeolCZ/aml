@@ -1,4 +1,4 @@
-name: Python Quality Checks
+name: Python Checks - pylint
 
 on:
   push:
