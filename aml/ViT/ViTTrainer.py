@@ -22,7 +22,9 @@ class ViTTrainer:
     (`bbox_head`) and classification (`cls_head`).
     """
 
-    def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, lr: float = 0.001, n_splits: int = 5, epochs: int = 5, batch_size: int = 32, patience: int = 2, annealing_rate: float = 0.000001) -> None:
+    def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, learning_rate: float = 0.001,
+                 n_splits: int = 5, epochs: int = 5, batch_size: int = 32, patience: int = 2,
+                 annealing_rate: float = 0.000001) -> None:
         """
         Initializes the ViTTrainer.
 
@@ -30,7 +32,7 @@ class ViTTrainer:
             model (ViT): The Vision Transformer model to train.
             device (torch.device): The device to train on (e.g., 'cuda' or 'cpu').
             dataset (ViTImageDataset): The dataset to use for training and validation.
-            lr (float, optional): The initial learning rate for the optimizer. Defaults to 0.001.
+            learning_rate (float, optional): The initial learning rate for the optimizer. Defaults to 0.001.
             n_splits (int, optional): The number of splits for K-Fold cross-validation. Defaults to 5.
             epochs (int, optional): The total number of training epochs (or more accurately,
                                     the number of distinct K-Fold splits to use for training).
@@ -44,7 +46,7 @@ class ViTTrainer:
         self.model.to(device=device)
         self.device = device
         self.dataset = dataset
-        self.lr = lr
+        self.learning_rate = learning_rate
         self.n_splits = n_splits
         self.batch_size = batch_size
         self.epochs = epochs
@@ -66,11 +68,9 @@ class ViTTrainer:
         Yields:
             Generator[Tuple[DataLoader, DataLoader], None, None]: A generator
             yielding tuples of (train_loader, val_loader) for each split.
-        """
-        # assert self.epochs % self.n_splits == 0, "Number of epochs must be divisible by number of splits"
 
-        # kfold = RepeatedKFold(n_splits=self.n_splits, n_repeats=self.epochs//self.n_splits,
-        #   random_state=self.SEED)
+        NOTE: For optimal performance set epochs to be fully divisable by n_splits
+        """
         kfold = RepeatedKFold(n_splits=self.n_splits, n_repeats=math.ceil(self.epochs/self.n_splits),
                               random_state=self.SEED)
 
@@ -105,7 +105,8 @@ class ViTTrainer:
                            completing the specified number of 'epochs' (splits).
         """
         optimizer = torch.optim.AdamW(
-            [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()], lr=self.lr)
+            [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()],
+            lr=self.learning_rate)
 
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=self.epochs, eta_min=self.annealing_rate)
@@ -135,9 +136,9 @@ class ViTTrainer:
 
             self._logger.info(
                 f"Epoch {epoch + 1}/{self.epochs} - " +
-                f"Train bbox loss: {bbox_loss.item():.4f}, " +
-                f"Train cls loss: {cls_los.item():.4f}, " +
-                f"Val bbox loss: {val_bbox_loss.item():.4f}, " +
+                f"Train bbox loss: {bbox_loss.item():.4f} " +
+                f"Train cls loss: {cls_los.item():.4f} " +
+                f"Val bbox loss: {val_bbox_loss.item():.4f} " +
                 f"Val cls loss: {val_cls_loss.item():.4f} " +
                 f"Best loss: {best_val_loss:.4f}"
             )
@@ -151,7 +152,7 @@ class ViTTrainer:
             self.model.load_state_dict(best_model)
         if save:
             torch.save(best_model, model_path +
-                       f"ValLoss_{round(val_loss, 2)}" + ".pth")
+                       f"ValLoss_{round(best_val_loss, 3)}" + ".pth")
 
         return best_val_loss
 
@@ -161,9 +162,6 @@ class ViTTrainer:
         """
         Trains and validates the model for one K-Fold split (equivalent to one
         epoch in the main training loop).
-
-        This method performs one full pass over the training data subset for
-        the current split and one full pass over the validation data subset.
 
         Args:
             optimizer (torch.optim.Optimizer): The optimizer to use for training.
@@ -178,19 +176,22 @@ class ViTTrainer:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
             Returns the training bbox loss, training classification loss,
             validation bbox loss, and validation classification loss.
+
             NOTE: These are the losses from the last batch of the
             respective loops, not the average over the entire dataset subset.
         """
         self.model.train()
         images: torch.Tensor
         labels: LabelType
+        bbox: torch.Tensor
+        cls: torch.Tensor
         for images, labels in train_loader:
             optimizer.zero_grad()
             input_bbox = labels["bbox"].squeeze().to(self.device)
             input_cls = torch.argmax(labels["cls"], dim=1).to(self.device)
             images = images.to(self.device)
             bbox, cls = self.model(images)
-            bbox_loss: torch.Tensor = bbox_criterion(bbox, input_bbox).mean()
+            bbox_loss: torch.Tensor = bbox_criterion(bbox, input_bbox, reduction="mean")
             cls_loss: torch.Tensor = cls_criterion(cls, input_cls)
             loss: torch.Tensor = bbox_loss + cls_loss
             loss.backward()
@@ -205,8 +206,7 @@ class ViTTrainer:
                 input_cls = torch.argmax(labels["cls"], dim=1).to(self.device)
                 images = images.to(self.device)
                 val_bbox, val_cls = self.model(images)
-                val_bbox_loss: torch.Tensor = bbox_criterion(
-                    val_bbox, input_bbox).mean()
+                val_bbox_loss: torch.Tensor = bbox_criterion(val_bbox, input_bbox, reduction="mean")
                 val_cls_loss: torch.Tensor = cls_criterion(
                     val_cls, input_cls)
 
