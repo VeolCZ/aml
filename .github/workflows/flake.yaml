@@ -1,4 +1,4 @@
-name: Python Quality Checks
+name: Python Checks - flake8
 
 on:
   push:
@@ -30,14 +30,3 @@ jobs:
       run: |
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
-      continue-on-error: true
-
-    - name: Run linter (pylint)
-      run: |
-        pylint **/*.py
-      continue-on-error: true
-
-    - name: Run type checker (mypy)
-      run: |
-        mypy --install-types --non-interactive --ignore-missing-imports --disable-error-code no-any-return .
-      continue-on-error: true

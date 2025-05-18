@@ -3,10 +3,11 @@
 # Custom
 /data
 /logs
+/lib64
+/activate
 .vscode
-bin
-lib
-lib64
+/bin
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
