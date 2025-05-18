@@ -15,8 +15,8 @@ def get_accuracy(model: ModelInterface, input_data: torch.Tensor, true_data: tor
 
 if __name__ == "__main__":
     model = ViT()
+    # model.load(path="...")
     # load weights
-    # model.load_state_dict...
 
     eval_dataset = ViTImageDataset(type="eval")
     test_loader = DataLoader(eval_dataset, batch_size=2)

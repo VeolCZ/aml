@@ -5,7 +5,6 @@ import torch
 import numpy as np
 import multiprocessing
 from ViT.ViT import ViT
-from datetime import datetime
 from ViT.ViTTrainer import ViTTrainer
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
