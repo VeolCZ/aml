@@ -104,7 +104,6 @@ class ViTTrainer:
             StopIteration: If the loader generator runs out of splits before
                            completing the specified number of 'epochs' (splits).
         """
-        vit_train_start = perf_counter()
         optimizer = torch.optim.AdamW(
             [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()],
             lr=self.learning_rate)
