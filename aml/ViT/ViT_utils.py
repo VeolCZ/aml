@@ -4,11 +4,12 @@ import logging
 import torch
 import numpy as np
 import multiprocessing
-from ViT.ViT import ViT
-from ViT.ViTTrainer import ViTTrainer
+from ViT.ViT import ViT, ViTTrainer
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
+from evaluator.Evaluator import Evaluator
 from preprocessing.ViTImageDataset import ViTImageDataset
+from torch.utils.tensorboard import SummaryWriter
 
 
 def train_vit() -> None:
@@ -30,7 +31,6 @@ def train_vit() -> None:
     eval_dataset = ViTImageDataset(type="eval")
 
     all_labels = train_dataset.get_cls_labels()
-
     train_indices, test_indices, _, _ = train_test_split(
         np.arange(len(train_dataset)),
         all_labels,
@@ -46,30 +46,62 @@ def train_vit() -> None:
 
     # Train the model
     model = ViT()
+    model.to(device=device)
     model.fit(train_dataset_subset)
 
-    # Test the model
+
+def eval_vit() -> None:
+    # Config
+    SEED = int(os.getenv("SEED", 123))
+    torch.manual_seed(SEED)
+    device = torch.device("cuda")
+
+    model = ViT()
+    model.load("/data/ViT_2025-05-16 12:28:42.294240ValLoss_1.84.pth")
     model.to(device=device)
 
-    total = 0
-    correct = 0
-    for images, labels in test_loader:
-        bbox, cls = model.predict(images)
+    eval_dataset = ViTImageDataset(type="eval")
 
-        predicted_class_indices_probs = torch.nn.functional.softmax(cls, dim=-1)
-        predicted_class_indices = predicted_class_indices_probs.argmax(-1)
-        actual_class_ids_batch = labels["cls"].argmax(-1).to(device)
+    all_labels = eval_dataset.get_cls_labels()
+    _, test_indices, _, _ = train_test_split(
+        np.arange(len(eval_dataset)),
+        all_labels,
+        test_size=0.1,  # CHANGE
+        stratify=all_labels,
+        random_state=SEED
+    )
+    test_dataset = Subset(eval_dataset, test_indices)
 
-        for k_in_batch in range(len(predicted_class_indices)):
-            pred_idx: int = int(predicted_class_indices[k_in_batch].item())
-            actual_cls_id: int = actual_class_ids_batch[k_in_batch].item()
+    x_test: list[torch.Tensor] = []
+    y_test: list[torch.Tensor] = []
+    z_test: list[torch.Tensor] = []
+    for img, label in iter(test_dataset):
+        x_test.append(img)
+        y_test.append(label["cls"])
+        z_test.append(label["bbox"].squeeze(0))
 
-            if pred_idx == actual_cls_id:
-                correct += 1
-            else:
-                print(f"Predicted: {pred_idx}, Actual: {actual_cls_id}")
-            total += 1
-    print(f"Accuracy {correct / total}")
+    x = torch.stack(x_test, dim=0)
+    y = torch.stack(y_test, dim=0)
+    z = torch.stack(z_test, dim=0).squeeze(0)
+    acc = Evaluator.get_accuracy(model, x, y)
+    print(f"acc: {acc}")
+
+    iou = Evaluator.get_IOU(model, x, z)
+    print(f"iou: {iou}")
+
+    top_5 = Evaluator.get_top_k(model, x, y, 5)
+    print(f"top_5: {top_5}")
+
+    # How to tensor board:
+    # writer = SummaryWriter("/logs/tensor_board")
+    # writer.add_scalar('iou', iou)
+    # writer.add_scalar('acc', acc)
+    # for n_iter in range(100):
+    #     writer.add_scalar('Loss/train', np.random.random(), n_iter)
+    #     writer.add_scalar('Loss/test', np.random.random(), n_iter)
+    #     writer.add_scalar('Accuracy/train', np.random.random(), n_iter)
+    #     writer.add_scalar('Accuracy/test', np.random.random(), n_iter)
+    # writer.close()
 
 
 def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:

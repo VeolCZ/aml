@@ -4,7 +4,7 @@
 - The inference speed (timing how long the model takes to predict)? -> done
 - ROC & AUROC (plots) -> sklearn, probably no
 - loss plot -> fixxxed
-- early stopping -> not really for trees as it doesn't make too much sense
+- early stopping -> not really for trees as it doesn't make too much sense # DONE
 - research about the space, if makes sense, implement it -> does it?
 
 FOR FRIDAY:
@@ -17,3 +17,9 @@ plotting curves for ViT
 research what to put on tensorboard
 clean up the mess in the docstrings, typehints and print statements
 
+ALL OUTPUTS ON CPU WHEN IT COMES TO TENSORS
+
+No duplicate code line pls.
+
+Constants are in UPPER_CASE and should be centralized so that every function does not have magic number in it
+for more info check how SEED is done

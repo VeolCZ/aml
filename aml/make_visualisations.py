@@ -106,7 +106,6 @@ def produce_certainty_plot(data: pd.DataFrame) -> None:
 
     Returns:
         None
-
     """
     first_cert = data.columns.get_loc("attr_1_cert")
     cert_sums_averages = data.iloc[:, first_cert:-1].sum() / data.shape[0]

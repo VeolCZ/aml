@@ -31,6 +31,13 @@ sudo bash build.sh # or execute the content of build.sh
 sudo bash run.sh # or execute the content of run.sh
 ```
 
+### View tensorboard
+
+```bash
+pip install tensorboard
+tensorboard --logdir PATH_TO_AML/aml/logs/tensor_board
+```
+
 ### Contributions
 
 First pull the repository to you environment using your preferd way. Afterwards and before making new brach execute the following.

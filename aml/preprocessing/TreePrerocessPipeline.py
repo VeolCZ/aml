@@ -92,7 +92,7 @@ class TreePrerocessPipeline:
                          )
 
     @staticmethod
-    def tree_image_transform(image: NDArray) -> NDArray[np.float64]:
+    def tree_image_transform(image: NDArray) -> torch.Tensor:
         """
         Extracts HOG features from an image.
 
@@ -110,4 +110,4 @@ class TreePrerocessPipeline:
                        block_norm="L2-Hys",
                        feature_vector=True)
 
-        return np.asarray(features, dtype=np.float64)
+        return torch.tensor(features)
