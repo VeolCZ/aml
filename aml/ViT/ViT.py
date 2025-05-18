@@ -1,8 +1,13 @@
 import torch
+import os
 from transformers import ViTForImageClassification
+from interface.ModelInterface import ModelInterface
+from datetime import datetime
+from ViT.ViTTrainer import ViTTrainer
+from preprocessing.ViTImageDataset import ViTImageDataset
 
 
-class ViT(torch.nn.Module):
+class ViT(torch.nn.Module, ModelInterface):
     def __init__(self, hidden_size: int = 1024, num_classes: int = 200, dp_rate: float = 0.1) -> None:
         """
         Initializes the ViT model with a pre-trained backbone and custom heads.
@@ -78,3 +83,31 @@ class ViT(torch.nn.Module):
         bbox = self.bbox_head(backbone)
         cls = self.cls_head(backbone)
         return bbox, cls
+
+    def fit(self, dataset: ViTImageDataset) -> None:
+        device = torch.device("cuda")
+        SEED = int(os.getenv("SEED", 123))
+        torch.manual_seed(SEED)
+        batch_size = 350
+        model_path = f"/data/ViT_{datetime.utcnow()}"
+        learning_rate = 0.0012278101209126883
+        annealing_rate = 6.1313110341652e-07
+        n_of_folds = 10
+        epochs = 20
+        patience = 4
+
+        trainer = ViTTrainer(self, device, dataset,
+                             epochs=epochs, batch_size=batch_size, patience=patience,
+                             learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
+        trainer.train(model_path=model_path, save=True)
+
+    def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        device = torch.device("cuda")
+        self.to(device=device)
+        data.to(device=device)
+
+        bbox: torch.Tensor
+        cls: torch.Tensor
+        bbox, cls = self(data)
+
+        return bbox, cls  # note if the model does not support cls/bbox just return empty tensor in its place
