@@ -25,12 +25,6 @@ def train_vit() -> None:
     SEED = int(os.getenv("SEED", 123))
     torch.manual_seed(SEED)
     batch_size = 350
-    model_path = f"/data/ViT_{datetime.utcnow()}"
-    learning_rate = 0.0012278101209126883
-    annealing_rate = 6.1313110341652e-07
-    n_of_folds = 10
-    epochs = 20
-    patience = 4
 
     # Datasets
     train_dataset = ViTImageDataset(type="train")
@@ -53,10 +47,7 @@ def train_vit() -> None:
 
     # Train the model
     model = ViT()
-    trainer = ViTTrainer(model, device, train_dataset_subset,
-                         epochs=epochs, batch_size=batch_size, patience=patience,
-                         learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
-    trainer.train(model_path=model_path, save=True)
+    model.fit(train_dataset_subset)
 
     # Test the model
     model.to(device=device)
@@ -64,9 +55,7 @@ def train_vit() -> None:
     total = 0
     correct = 0
     for images, labels in test_loader:
-        model.eval()
-        images = images.to(device)
-        bbox, cls = model(images)
+        bbox, cls = model.predict(images)
 
         predicted_class_indices_probs = torch.nn.functional.softmax(cls, dim=-1)
         predicted_class_indices = predicted_class_indices_probs.argmax(-1)

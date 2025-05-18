@@ -85,7 +85,7 @@ class ViT(torch.nn.Module, ModelInterface):
         return bbox, cls
 
     def fit(self, dataset: ViTImageDataset) -> None:
-        device = torch.device("cuda")
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         SEED = int(os.getenv("SEED", 123))
         torch.manual_seed(SEED)
         batch_size = 350
@@ -102,12 +102,17 @@ class ViT(torch.nn.Module, ModelInterface):
         trainer.train(model_path=model_path, save=True)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        device = torch.device("cuda")
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(device=device)
         data.to(device=device)
 
+        self.eval()
         bbox: torch.Tensor
         cls: torch.Tensor
-        bbox, cls = self(data)
+        with torch.no_grad():
+            bbox, cls = self(data)
 
-        return bbox, cls  # note if the model does not support cls/bbox just return empty tensor in its place
+        return bbox, cls
+
+    def load(self, path: str) -> None:
+        self.load_state_dict(torch.load(path, weights_only=True))

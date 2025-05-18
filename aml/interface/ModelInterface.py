@@ -9,5 +9,10 @@ class ModelInterface(abc.ABC):
         raise NotImplementedError("Not implemented.")
 
     @abc.abstractmethod
-    def predict(self, data: torch.Tensor) -> torch.Tensor:
+    def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        # if the model only predicts one tensor return thst and other one empty
+        raise NotImplementedError("Not implemented.")
+
+    @abc.abstractmethod
+    def load(self, path: str) -> None:
         raise NotImplementedError("Not implemented.")
