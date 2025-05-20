@@ -49,11 +49,11 @@ class ViTAPI(ls.LitAPI):
         Initializes the ViT model and preprocessing pipeline.
 
         Args:
-            device (str): Compute device to use ('cuda' or 'cpu').
+            device (str): Compute device to use ("cuda" or "cpu").
         """
         self.device = device
         self.vit = ViT()
-        self.vit.load("/data/ViT_2025-05-16 12:28:42.294240ValLoss_1.84.pth")
+        self.vit.load("/weights/ViT_2025-05-16 12:28:42.294240ValLoss_1.84.pth")
         self.preprocess = ViTPreprocessPipeline.get_base_eval_transform()
 
     def decode_request(self, request: APIInput) -> torch.Tensor:
@@ -82,8 +82,8 @@ class ViTAPI(ls.LitAPI):
             image_file = Image.open(io.BytesIO(image_bytes))
             image_file.verify()
             image_file = Image.open(io.BytesIO(image_bytes))
-            if image_file.mode != 'RGB':
-                image = image_file.convert('RGB')
+            if image_file.mode != "RGB":
+                image = image_file.convert("RGB")
             else:
                 image = image_file
         except (UnidentifiedImageError, OSError) as e:
@@ -108,7 +108,7 @@ class ViTAPI(ls.LitAPI):
 
     def encode_response(self, output: dict[str, Any]) -> APIOutput:
         """
-        Encodes model's raw prediction output into the APIOutput schema.
+        Encodes model"s raw prediction output into the APIOutput schema.
 
         Args:
             output (dict[str, Any]): Raw prediction results from predict.
@@ -126,7 +126,7 @@ class ViTAPI(ls.LitAPI):
             data (torch.Tensor): Preprocessed image tensor.
 
         Returns:
-            dict[str, Any]: Contains 'class_id' (int) and 'bounding_box' (list of floats).
+            dict[str, Any]: Contains "class_id" (int) and "bounding_box" (list of floats).
         """
         input_tensor = data.to(self.device)
         bbox, cls = self.vit.predict(input_tensor)
