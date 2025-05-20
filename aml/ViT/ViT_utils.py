@@ -5,10 +5,9 @@ import torch
 import numpy as np
 import multiprocessing
 from ViT.ViT import ViT
-from datetime import datetime
-from ViT.ViTTrainer import ViTTrainer
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
+from ViT.ViTTrainer import ViTTrainer
 from preprocessing.ViTImageDataset import ViTImageDataset
 
 
@@ -25,19 +24,12 @@ def train_vit() -> None:
     SEED = int(os.getenv("SEED", 123))
     torch.manual_seed(SEED)
     batch_size = 350
-    model_path = f"/data/ViT_{datetime.utcnow()}"
-    learning_rate = 0.0012278101209126883
-    annealing_rate = 6.1313110341652e-07
-    n_of_folds = 10
-    epochs = 20
-    patience = 4
 
     # Datasets
     train_dataset = ViTImageDataset(type="train")
     eval_dataset = ViTImageDataset(type="eval")
 
     all_labels = train_dataset.get_cls_labels()
-
     train_indices, test_indices, _, _ = train_test_split(
         np.arange(len(train_dataset)),
         all_labels,
@@ -53,35 +45,30 @@ def train_vit() -> None:
 
     # Train the model
     model = ViT()
-    trainer = ViTTrainer(model, device, train_dataset_subset,
-                         epochs=epochs, batch_size=batch_size, patience=patience,
-                         learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
-    trainer.train(model_path=model_path, save=True)
+    model.to(device=device)
+    model.fit(train_dataset_subset)
 
-    # Test the model
+
+def eval_vit() -> None:
+    # Config
+    SEED = int(os.getenv("SEED", 123))
+    torch.manual_seed(SEED)
+    device = torch.device("cuda")
+
+    model = ViT()
     model.to(device=device)
 
-    total = 0
-    correct = 0
-    for images, labels in test_loader:
-        model.eval()
-        images = images.to(device)
-        bbox, cls = model(images)
+    eval_dataset = ViTImageDataset(type="eval")
 
-        predicted_class_indices_probs = torch.nn.functional.softmax(cls, dim=-1)
-        predicted_class_indices = predicted_class_indices_probs.argmax(-1)
-        actual_class_ids_batch = labels["cls"].argmax(-1).to(device)
-
-        for k_in_batch in range(len(predicted_class_indices)):
-            pred_idx: int = int(predicted_class_indices[k_in_batch].item())
-            actual_cls_id: int = actual_class_ids_batch[k_in_batch].item()
-
-            if pred_idx == actual_cls_id:
-                correct += 1
-            else:
-                print(f"Predicted: {pred_idx}, Actual: {actual_cls_id}")
-            total += 1
-    print(f"Accuracy {correct / total}")
+    all_labels = eval_dataset.get_cls_labels()
+    _, test_indices, _, _ = train_test_split(
+        np.arange(len(eval_dataset)),
+        all_labels,
+        test_size=0.1,  # CHANGE
+        stratify=all_labels,
+        random_state=SEED
+    )
+    _test_dataset = Subset(eval_dataset, test_indices)
 
 
 def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:

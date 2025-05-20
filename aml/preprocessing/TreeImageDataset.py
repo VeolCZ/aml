@@ -73,7 +73,7 @@ class TreeImageDataset(Dataset):
 
         return transformed_image, labels
 
-    def __getitem__(self, idx: int) -> tuple[NDArray, LabelType]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, LabelType]:
         """
         Retrieves image and label data for a given index.
 
@@ -119,3 +119,6 @@ class TreeImageDataset(Dataset):
             raise RuntimeError(f"Error during hog generation at index {idx}: {e}")
 
         return image_features, labels
+
+    def get_cls_labels(self) -> list[int]:
+        return [int(label) for label in self._labels["class_id"]]
