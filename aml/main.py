@@ -1,10 +1,10 @@
+import logging
+import sys
 from api.ViTAPI import serve
 from make_labels import make_labels
 from make_visualisations import make_visualization
 from random_forests.forest_train_util import train_classifier_forest, train_regressor_forest
 from ViT.ViT_utils import optimize_hyperparameters, train_vit
-import logging
-import sys
 
 
 logging.basicConfig(
