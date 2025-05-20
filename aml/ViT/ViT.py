@@ -89,7 +89,7 @@ class ViT(torch.nn.Module, ModelInterface):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         SEED = int(os.getenv("SEED", 123))
         torch.manual_seed(SEED)
-        batch_size = 35
+        batch_size = 350
         model_path = f"/data/ViT_{datetime.utcnow()}"
         learning_rate = 0.0012278101209126883
         annealing_rate = 6.1313110341652e-07
