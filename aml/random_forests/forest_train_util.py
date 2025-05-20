@@ -43,7 +43,9 @@ def train_classifier_forest() -> None:
     y = torch.stack(y_test, dim=0)
 
     acc = Evaluator.get_accuracy(model, x, y)
-    print(acc)
+    print(f"accuracy: {acc}")
+    top_k = Evaluator.get_top_k(model, x, y, k=5)
+    print(f"top_k:{top_k}")
 
     # _, cls = model.predict()
     # print(cls)
@@ -87,7 +89,7 @@ def train_regressor_forest() -> None:
     # print(y)
 
     iou = Evaluator.get_IOU(model, x, y)
-    print(iou)
+    print(f"iou: {iou}")
 
     # bbox, _ = forest.predict([test_dataset[0][0]])
     # print(bbox)

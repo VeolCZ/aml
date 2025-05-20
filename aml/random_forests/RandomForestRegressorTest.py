@@ -13,6 +13,9 @@ class RandomForestRegressorModel(RandomForestTest):
     def __init__(self) -> None:
         super().__init__(RandomForestRegressor())
 
+    def name(self) -> str:
+        return "RandomForestRegressor"
+
     def fit(self, train_dataset: Dataset) -> None:
         x_train, y_train = [], []
         for i in range(len(train_dataset)):

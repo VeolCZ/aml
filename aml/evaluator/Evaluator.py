@@ -19,8 +19,7 @@ class Evaluator:
 
     @staticmethod
     def get_top_k(model: ModelInterface, input_data: torch.Tensor, true_label: torch.Tensor, k: int) -> float:
-        _, cls = model.predict(input_data)
-
+        _, cls = model.predict_proba(input_data) if model.name() == "RandomForestClassifier" else model.predict(input_data)
         true_label_indices = torch.argmax(true_label, dim=1).unsqueeze(dim=1)
         _, top_k_indices = torch.topk(cls, k=k, dim=1)
 
