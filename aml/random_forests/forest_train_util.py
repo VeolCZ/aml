@@ -40,12 +40,13 @@ def train_classifier_forest() -> None:
         y_test.append(label["cls"])
 
     x = torch.stack(x_test, dim=0)
-    y = torch.stack(y_test, dim=0)
+    y = torch.stack(y_test, dim=1)
+    y_topk = torch.stack(y_test, dim=0) # otherwise dimension mismatch for topk
 
     acc = Evaluator.get_accuracy(model, x, y)
     print(f"accuracy: {acc}")
-    top_k = Evaluator.get_top_k(model, x, y, k=5)
-    print(f"top_k:{top_k}")
+    top_k = Evaluator.get_top_k(model, x, y_topk, k=5)
+    print(f"top_5: {top_k}")
 
     # _, cls = model.predict()
     # print(cls)

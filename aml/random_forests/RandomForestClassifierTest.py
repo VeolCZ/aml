@@ -13,9 +13,6 @@ class RandomForestClassifierModel(RandomForestTest):
     def __init__(self) -> None:
         super().__init__(RandomForestClassifier())
 
-    def name(self) -> str:
-        return "RandomForestClassifier"
-
     def fit(self, train_dataset: Dataset) -> None:
         x_train, y_train = [], []
         for i in range(len(train_dataset)):
@@ -26,9 +23,5 @@ class RandomForestClassifierModel(RandomForestTest):
         self.model.fit(x_train, y_train)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        cls = self.model.predict(data)
-        return torch.empty((1)), torch.tensor(cls)
-    
-    def predict_proba(self, data: torch.Tensor) -> torch.Tensor:
         cls = self.model.predict_proba(data)
-        return torch.empty((1)),torch.tensor(cls)
+        return torch.empty((1)), torch.tensor(cls)

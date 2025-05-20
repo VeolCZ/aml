@@ -67,9 +67,6 @@ class ViT(torch.nn.Module, ModelInterface):
             if isinstance(layer, torch.nn.Linear):
                 torch.nn.init.xavier_uniform_(layer.weight)
                 torch.nn.init.zeros_(layer.bias)
-
-    def name(self) -> str:
-        return "ViT"
     
     def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
