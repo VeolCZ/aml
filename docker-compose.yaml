@@ -1,5 +1,7 @@
 services:
   app:
+    ports:
+      - "8000:8000"
     container_name: "aml"
     command: python3 main.py
     shm_size: "20g"
