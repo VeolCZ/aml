@@ -1,8 +1,7 @@
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
 import torch
-from typing import List
-from .RandomForest import RandomForest
+from random_forests.RandomForest import RandomForest
+from torch.utils.data import Dataset
 
 
 class RandomForestClassifierModel(RandomForest):
@@ -11,24 +10,17 @@ class RandomForestClassifierModel(RandomForest):
     Inherits from the abstract base RandomForest class.
     """
 
-    def _init_model(self) -> RandomForestClassifier:
-        """
-        Initializes the Random Forest Classifier model.
-        Returns:
-            RandomForestClassifier: An instance of the Random Forest Classifier.
-        """
-        return RandomForestClassifier()
+    def __init__(self) -> None:
+        super().__init__(RandomForestClassifier())
 
-    def _compute_metrics(self, y_test: List[torch.Tensor], y_pred: List[torch.Tensor]) -> float:
-        """
-        Computes the accuracy metric for classification tasks.
-        Args:
-            y_test (List[torch.Tensor]): List of ground truth labels.
-            y_pred (List[torch.Tensor]): List of predicted labels.
-        Returns:
-            float: The accuracy score.
-        """
-        return float(accuracy_score(y_test, y_pred))
+    def fit(self, train_dataset: Dataset) -> None:
+        x_train, y_train = [], []
+        for img, label in iter(train_dataset):
+            x_train.append(img)
+            y_train.append(label["cls"])
 
-    def _get_target_key(self) -> str:
-        return "cls"
+        self.model.fit(x_train, y_train)
+
+    def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        cls = self.model.predict(data)
+        return torch.empty((1)), torch.tensor(cls)
