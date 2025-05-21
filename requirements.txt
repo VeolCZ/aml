@@ -3,6 +3,7 @@ scikit-learn
 matplotlib
 seaborn
 torchvision
+torcheval
 albumentations
 scikit-image
 transformers

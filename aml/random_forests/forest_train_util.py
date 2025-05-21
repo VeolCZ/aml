@@ -41,18 +41,11 @@ def train_classifier_forest() -> None:
 
     x = torch.stack(x_test, dim=0)
     y = torch.stack(y_test, dim=1)
+
     y_topk = torch.stack(y_test, dim=0) # otherwise dimension mismatch for topk
 
-    acc = Evaluator.get_accuracy(model, x, y)
-    print(f"accuracy: {acc}")
-    top_k = Evaluator.get_top_k(model, x, y_topk, k=5)
-    print(f"top_5: {top_k}")
-    avg_auc = Evaluator.multiroc(model, x, y)
-    print(f"avg_auc: {avg_auc}")
-    f1 = Evaluator.f1_score(model, x, y)
-    print(f"f1_score: {f1}")
-    conf_matrix = Evaluator.confusion_matrix(model, x, y)
-    print(f"confusion matrix: {conf_matrix}")
+    eval = Evaluator.classifier_eval(model, x, y)
+    print(f"Evaluation scores: {eval}")
 
     # _, cls = model.predict()
     # print(cls)
