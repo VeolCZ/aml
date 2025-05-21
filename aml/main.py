@@ -8,7 +8,7 @@ from random_forests.forest_train_util import train_classifier_forest, train_regr
 
 logging.basicConfig(
     level="INFO",
-    # filename="/logs/logs.log",  # Enable for preserved logs
+    filename="/logs/logs.log",  # Enable for preserved logs
     format="%(asctime)s %(levelname)s %(module)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )

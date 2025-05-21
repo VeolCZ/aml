@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aml"
 version = "0.1.0"
-description = "TODO"
+description = "ViT + Random forest for Bird detection"
 authors = [{ name = "Jakub Janicek" }]
 requires-python = ">=3.12"
 

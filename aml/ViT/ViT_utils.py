@@ -64,7 +64,7 @@ def eval_vit() -> None:
     _, test_indices, _, _ = train_test_split(
         np.arange(len(eval_dataset)),
         all_labels,
-        test_size=0.1,  # CHANGE
+        test_size=0.1,
         stratify=all_labels,
         random_state=SEED
     )
