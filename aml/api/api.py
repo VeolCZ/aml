@@ -1,5 +1,7 @@
+from enum import Enum
 from fastapi import HTTPException, status
 from PIL import Image, UnidentifiedImageError
+from random_forests.CompositeRandomForest import CompositeRandomForest
 from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline
 from pydantic import BaseModel, Field
 from typing import Any
@@ -9,6 +11,12 @@ import io
 import litserve as ls
 import numpy as np
 import torch
+from preprocessing.TreePrerocessPipeline import TreePrerocessPipeline
+
+
+class ModelType(str, Enum):
+    VIT = "ViT"
+    Forest = "Forest"
 
 
 class APIInput(BaseModel):
@@ -20,6 +28,10 @@ class APIInput(BaseModel):
         description=(
             "Base64 encoded string of the input image (JPEG or PNG recommended). "
         )
+    )
+    model: ModelType = Field(
+        ...,
+        description="Model to use (Forest/ViT)"
     )
 
 
@@ -33,7 +45,7 @@ class APIOutput(BaseModel):
     )
     bounding_box: list[float] = Field(
         ...,
-        description="Predicted bounding box coordinates [x_min, y_min, x_max, y_max].",
+        description="Predicted bounding box coordinates [x_min, y_min, x_max, y_max] scaled to [0-1] range.",
         min_length=4,
         max_length=4
     )
@@ -54,9 +66,12 @@ class ViTAPI(ls.LitAPI):
         self.device = device
         self.vit = ViT()
         self.vit.load("/weights/ViT_2025-05-16 12:28:42.294240ValLoss_1.84.pth")
-        self.preprocess = ViTPreprocessPipeline.get_base_eval_transform()
+        self.forest = CompositeRandomForest()
+        self.forest.load("/weights/forest")
+        self.vit_preprocess = ViTPreprocessPipeline.vit_predict_transform
+        self.tree_preprocess = TreePrerocessPipeline.tree_predict_transform
 
-    def decode_request(self, request: APIInput) -> torch.Tensor:
+    def decode_request(self, request: APIInput) -> tuple[torch.Tensor, ModelType]:
         """
         Decodes base64 image from request into a preprocessed PyTorch tensor.
 
@@ -98,13 +113,12 @@ class ViTAPI(ls.LitAPI):
             )
 
         image_np = np.array(image)
-        image_tensor: torch.Tensor = self.preprocess(
-            image=image_np,
-            bboxes=[],
-            class_labels=[]
-        )["image"]
+        if request.model == ModelType.VIT:
+            image_tensor = self.vit_preprocess(image_np)
+        else:
+            image_tensor = self.tree_preprocess(image_np)
 
-        return image_tensor.unsqueeze(0)
+        return image_tensor, request.model
 
     def encode_response(self, output: dict[str, Any]) -> APIOutput:
         """
@@ -118,7 +132,7 @@ class ViTAPI(ls.LitAPI):
         """
         return APIOutput(**output)
 
-    def predict(self, data: torch.Tensor) -> dict[str, Any]:
+    def predict(self, data: tuple[torch.Tensor, ModelType]) -> dict[str, Any]:
         """
         Performs inference using the ViT model.
 
@@ -128,8 +142,13 @@ class ViTAPI(ls.LitAPI):
         Returns:
             dict[str, Any]: Contains "class_id" (int) and "bounding_box" (list of floats).
         """
-        input_tensor = data.to(self.device)
-        bbox, cls = self.vit.predict(input_tensor)
+        input_tensor = data[0].to(self.device)
+        if data[1] == ModelType.VIT:
+            bbox, cls = self.vit.predict(input_tensor)
+            bbox = bbox / ViTPreprocessPipeline.img_size
+        else:
+            bbox, cls = self.forest.predict(input_tensor)
+            bbox = bbox / TreePrerocessPipeline.img_size
 
         bbox_list = bbox.squeeze(0).cpu().numpy().tolist()
         class_id = cls.argmax(-1).item()
