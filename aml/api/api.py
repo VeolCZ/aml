@@ -15,30 +15,27 @@ from preprocessing.TreePrerocessPipeline import TreePrerocessPipeline
 
 
 class ModelType(str, Enum):
+    """Enumeration for available model types."""
     VIT = "ViT"
     Forest = "Forest"
 
 
 class APIInput(BaseModel):
-    """
-    Schema for image prediction request.
-    """
+    """Schema for image prediction request."""
     image: str = Field(
         ...,
         description=(
-            "Base64 encoded string of the input image (JPEG or PNG recommended). "
+            "Base64 encoded string of the input image (JPEG or PNG recommended)."
         )
     )
     model: ModelType = Field(
         ...,
-        description="Model to use (Forest/ViT)"
+        description="Model to use for prediction (Forest/ViT)."
     )
 
 
 class APIOutput(BaseModel):
-    """
-    Schema for image prediction response.
-    """
+    """Schema for image prediction response."""
     class_id: int = Field(
         ...,
         description="The predicted class ID (integer)."
@@ -53,12 +50,14 @@ class APIOutput(BaseModel):
 
 class ViTAPI(ls.LitAPI):
     """
-    LitServe API for image classification and bounding box prediction using a Vision Transformer.
+    LitServe API for image classification and bounding box prediction.
+
+    Uses either a Vision Transformer (ViT) or a Random Forest model.
     """
 
     def setup(self, device: str) -> None:
         """
-        Initializes the ViT model and preprocessing pipeline.
+        Initializes models and preprocessing pipelines.
 
         Args:
             device (str): Compute device to use ("cuda" or "cpu").
@@ -79,7 +78,7 @@ class ViTAPI(ls.LitAPI):
             request (APIInput): Incoming API request containing the base64 image.
 
         Returns:
-            torch.Tensor: Preprocessed image tensor ready for the model.
+            tuple[torch.Tensor, ModelType]: Preprocessed image tensor and the selected model type.
 
         Raises:
             HTTPException: If base64 string is invalid, image is malformed, or preprocessing fails.
@@ -122,10 +121,10 @@ class ViTAPI(ls.LitAPI):
 
     def encode_response(self, output: dict[str, Any]) -> APIOutput:
         """
-        Encodes model"s raw prediction output into the APIOutput schema.
+        Encodes raw prediction output into the APIOutput schema.
 
         Args:
-            output (dict[str, Any]): Raw prediction results from predict.
+            output (dict[str, Any]): Raw prediction results.
 
         Returns:
             APIOutput: Formatted API response.
@@ -134,10 +133,10 @@ class ViTAPI(ls.LitAPI):
 
     def predict(self, data: tuple[torch.Tensor, ModelType]) -> dict[str, Any]:
         """
-        Performs inference using the ViT model.
+        Performs inference using the selected model.
 
         Args:
-            data (torch.Tensor): Preprocessed image tensor.
+            data (tuple[torch.Tensor, ModelType]): Preprocessed image tensor and model type.
 
         Returns:
             dict[str, Any]: Contains "class_id" (int) and "bounding_box" (list of floats).
@@ -157,8 +156,6 @@ class ViTAPI(ls.LitAPI):
 
 
 def serve() -> None:
-    """
-    Starts the LitServe API server.
-    """
+    """Starts the LitServe API server."""
     server = ls.LitServer(ViTAPI(max_batch_size=1), accelerator="auto")
     server.run(port=8000, host="0.0.0.0")
