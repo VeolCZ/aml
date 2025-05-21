@@ -1,6 +1,7 @@
 from enum import Enum
 from fastapi import HTTPException, status
 from PIL import Image, UnidentifiedImageError
+from make_labels import get_classes
 from random_forests.CompositeRandomForest import CompositeRandomForest
 from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline
 from pydantic import BaseModel, Field
@@ -36,9 +37,9 @@ class APIInput(BaseModel):
 
 class APIOutput(BaseModel):
     """Schema for image prediction response."""
-    class_id: int = Field(
+    species: str = Field(
         ...,
-        description="The predicted class ID (integer)."
+        description="The predicted class (Bird species)."
     )
     bounding_box: list[float] = Field(
         ...,
@@ -69,6 +70,7 @@ class ViTAPI(ls.LitAPI):
         self.forest.load("/weights/forest")
         self.vit_preprocess = ViTPreprocessPipeline.vit_predict_transform
         self.tree_preprocess = TreePrerocessPipeline.tree_predict_transform
+        self.cls_mapping = get_classes()
 
     def decode_request(self, request: APIInput) -> tuple[torch.Tensor, ModelType]:
         """
@@ -150,9 +152,9 @@ class ViTAPI(ls.LitAPI):
             bbox = bbox / TreePrerocessPipeline.img_size
 
         bbox_list = bbox.squeeze(0).cpu().numpy().tolist()
-        class_id = cls.argmax(-1).item()
-
-        return {"class_id": class_id, "bounding_box": bbox_list}
+        class_id = int(cls.argmax(-1).item())
+        cls = self.cls_mapping[class_id]
+        return {"species": cls, "bounding_box": bbox_list}
 
 
 def serve() -> None:
