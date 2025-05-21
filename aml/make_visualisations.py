@@ -39,7 +39,8 @@ def add_supper_classes_to_data(data: pd.DataFrame, save: bool = True) -> pd.Data
 
 def produce_tsne(data: pd.DataFrame) -> None:
     """
-    Apply PCA on the dataset, then produce a t-SNE plot and show it.
+    Apply PCA on the dataset, then produce a t-SNE plot and and
+    save it.
 
     Args:
         data(pd.DataFrame): the dataframe in question
@@ -80,7 +81,7 @@ def produce_tsne(data: pd.DataFrame) -> None:
 
 def produce_class_freq_histogram(data: pd.DataFrame) -> None:
     """
-    Produce a histogram of class frequencies for the dataframe.
+    Produce a histogram of class frequencies for the dataframe and save it.
 
     Args:
         data(pd.DataFrame): the dataframe in question
@@ -98,7 +99,7 @@ def produce_class_freq_histogram(data: pd.DataFrame) -> None:
 
 def produce_certainty_plot(data: pd.DataFrame) -> None:
     """
-    Produce a barplot of the mean certainty of the binary operators.
+    Produce a barplot of the mean certainty of the binary operators and save it.
 
     Args:
         data(pd.DataFrame): the dataframe in question

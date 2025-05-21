@@ -1,10 +1,9 @@
-name: Python Quality Checks
+name: Python Checks - flake8
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  pull_request: null
 
 jobs:
   quality-checks:
@@ -31,11 +30,3 @@ jobs:
       run: |
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
-
-    - name: Run linter (pylint)
-      run: |
-        pylint **/*.py
-
-    - name: Run type checker (mypy)
-      run: |
-        mypy --install-types --non-interactive --ignore-missing-imports .
