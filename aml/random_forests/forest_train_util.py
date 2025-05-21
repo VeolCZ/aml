@@ -47,6 +47,12 @@ def train_classifier_forest() -> None:
     print(f"accuracy: {acc}")
     top_k = Evaluator.get_top_k(model, x, y_topk, k=5)
     print(f"top_5: {top_k}")
+    avg_auc = Evaluator.multiroc(model, x, y)
+    print(f"avg_auc: {avg_auc}")
+    f1 = Evaluator.f1_score(model, x, y)
+    print(f"f1_score: {f1}")
+    conf_matrix = Evaluator.confusion_matrix(model, x, y)
+    print(f"confusion matrix: {conf_matrix}")
 
     # _, cls = model.predict()
     # print(cls)
