@@ -60,7 +60,7 @@ def encode_image_to_base64(image_path):
         encoded_string = base64.b64encode(image_file.read()).decode("utf-8")
     return encoded_string
 
-payload = {"image": image_file_path, "model": "ViT"}
+payload = {"image": encode_image_to_base64(IMAGE_FILE_PATH), "model": "ViT"}
 headers = {"Content-Type": "application/json"}
 
 response = requests.post("http://localhost:8000/predict", headers=headers, data=json.dumps(payload))
