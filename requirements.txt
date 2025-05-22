@@ -8,3 +8,4 @@ scikit-image
 transformers
 hf_xet
 optuna
+litserve

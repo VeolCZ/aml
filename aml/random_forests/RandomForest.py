@@ -23,7 +23,6 @@ class RandomForest(ModelInterface):
             path (str): The path to save the model.
         """
         joblib.dump(self.model, path)
-        print(f"Model saved to {path}")
 
     def load(self, path: str) -> None:
         """
@@ -32,4 +31,3 @@ class RandomForest(ModelInterface):
             path (str): The path to load the model from.
         """
         self.model = joblib.load(path)
-        print(f"Model loaded from {path}")
