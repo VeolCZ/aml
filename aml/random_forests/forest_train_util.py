@@ -1,14 +1,14 @@
 import numpy as np
 import torch
 from evaluator.Evaluator import Evaluator
-from random_forests.RandomForestClassifierTest import RandomForestClassifierModel
-from random_forests.RandomForestRegressorTest import RandomForestRegressorModel
+from random_forests.RandomForestClassifier import RandomForestClassifierModel
+from random_forests.RandomForestRegressor import RandomForestRegressorModel
 from torch.utils.data import Subset
 from sklearn.model_selection import train_test_split
 from preprocessing.TreeImageDataset import TreeImageDataset
 
 
-def train_classifier_forest() -> None:
+def train_classifier_forest() -> dict[str:float]:
     """
     Run the random forest training for classification.
     """
@@ -42,16 +42,12 @@ def train_classifier_forest() -> None:
     x = torch.stack(x_test, dim=0)
     y = torch.stack(y_test, dim=1)
 
-    y_topk = torch.stack(y_test, dim=0) # otherwise dimension mismatch for topk
-
     eval = Evaluator.classifier_eval(model, x, y)
     print(f"Evaluation scores: {eval}")
-
-    # _, cls = model.predict()
-    # print(cls)
+    return eval
 
 
-def train_regressor_forest() -> None:
+def train_regressor_forest() -> float:
     """
     Run the random forest training for regression.
     """
@@ -85,11 +81,6 @@ def train_regressor_forest() -> None:
     x = torch.stack(x_test, dim=0)
     y = torch.stack(y_test, dim=0).squeeze(0)
 
-    # print(x)
-    # print(y)
-
     iou = Evaluator.get_IOU(model, x, y)
     print(f"iou: {iou}")
-
-    # bbox, _ = forest.predict([test_dataset[0][0]])
-    # print(bbox)
+    return iou
