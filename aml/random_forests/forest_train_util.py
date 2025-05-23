@@ -56,13 +56,13 @@ def train_classifier_forest(writer:bool =True) -> dict[str:float]:
     print(f"Evaluation scores: {eval}")
     confusion_matrix = eval["confusion_matrix"]
     num_classes = eval["num_classes"]
-    buf = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
+    image = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
     if writer:
         write_summary().add_scalar("Classifier/Accuracy", eval["accuracy"], 0)
         write_summary().add_scalar("Classifier/F1", eval["f1_score"], 0)
         write_summary().add_scalar("Classifier/top_k", eval["top_k"], 0)
         write_summary().add_scalar("Classifier/multiroc", eval["multiroc"], 0)
-        # write_summary().add_image("Classifier/Confusion Matrix", buf, 0, dataformats="HW")
+        write_summary().add_image("Classifier/Confusion Matrix", image, 0)
     return eval
 
 

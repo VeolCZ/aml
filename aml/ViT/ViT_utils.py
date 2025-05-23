@@ -4,12 +4,13 @@ import logging
 import torch
 import numpy as np
 import multiprocessing
-from ViT.ViT import ViT, ViTTrainer
+from ViT.ViT import ViT, ViTTrainer #, epoch_loss
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
 from evaluator.Evaluator import Evaluator
 from preprocessing.ViTImageDataset import ViTImageDataset
-from torch.utils.tensorboard import SummaryWriter
+from tboard.summarywriter import write_summary
+from tboard.plotting import plot_confusion_matrix
 
 
 def train_vit() -> None:
@@ -50,7 +51,7 @@ def train_vit() -> None:
     model.fit(train_dataset_subset)
 
 
-def eval_vit() -> None:
+def eval_vit(writer:bool = False) -> None:
     # Config
     SEED = int(os.getenv("SEED", 123))
     torch.manual_seed(SEED)
@@ -83,15 +84,30 @@ def eval_vit() -> None:
     x = torch.stack(x_test, dim=0)
     y = torch.stack(y_test, dim=0)
     z = torch.stack(z_test, dim=0).squeeze(0)
-    acc = Evaluator.get_accuracy(model, x, y)
-    print(f"acc: {acc}")
+    # acc = Evaluator.get_accuracy(model, x, y)
+    # print(f"acc: {acc}")
 
     iou = Evaluator.get_IOU(model, x, z)
     print(f"iou: {iou}")
 
-    top_5 = Evaluator.get_top_k(model, x, y, 5)
-    print(f"top_5: {top_5}")
+    # top_5 = Evaluator.get_top_k(model, x, y, 5)
+    # print(f"top_5: {top_5}")
 
+    eval = Evaluator.classifier_eval(model, x, y)
+
+    confusion_matrix = eval["confusion_matrix"]
+    num_classes = eval["num_classes"]
+    image = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
+
+    if writer:
+        write_summary(run_name= "ViT").add_scalar("ViT/Accuracy", eval["accuracy"], 0)
+        write_summary(run_name= "ViT").add_scalar("ViT/F1", eval["f1_score"], 0)
+        write_summary(run_name= "ViT").add_scalar("ViT/top_k", eval["top_k"], 0)
+        write_summary(run_name= "ViT").add_scalar("ViT/multiroc", eval["multiroc"], 0)
+        write_summary(run_name= "ViT").add_scalar("ViT/iou", iou, 0)
+        write_summary(run_name= "ViT").add_image("ViT/Confusion Matrix", image, 0)
+        # for epoch in epoch_loss.keys():
+        #     write_summary().add_scalar("ViT/epoch_loss", epoch_loss[epoch], epoch)
     # How to tensor board:
     # writer = SummaryWriter("/logs/tensor_board")
     # writer.add_scalar('iou', iou)

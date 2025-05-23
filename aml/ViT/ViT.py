@@ -13,6 +13,7 @@ from transformers import ViTForImageClassification
 from interface.ModelInterface import ModelInterface
 from datetime import datetime
 
+epoch_loss:dict = {}
 
 class ViT(torch.nn.Module, ModelInterface):
     def __init__(self, hidden_size: int = 1024, num_classes: int = 200, dp_rate: float = 0.1) -> None:
@@ -300,6 +301,7 @@ class ViTTrainer:
             scheduler.step()
 
             val_loss = float((val_bbox_loss + val_cls_loss).item())
+            epoch_loss[epoch] = val_loss
             if val_loss <= best_val_loss:
                 best_val_loss = val_loss
                 best_model = copy.deepcopy(self.model.state_dict())
