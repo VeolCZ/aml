@@ -6,9 +6,19 @@ from random_forests.RandomForestRegressor import RandomForestRegressorModel
 from torch.utils.data import Subset
 from sklearn.model_selection import train_test_split
 from preprocessing.TreeImageDataset import TreeImageDataset
+from tboard.plotting import plot_confusion_matrix
+from tboard.summarywriter import write_summary
 
 
-def train_classifier_forest() -> dict[str:float]:
+def train_forests() -> dict[str:float]:
+    writer = write_summary(run_name="aml/runs/random_forest_thing")
+    cls_results = train_classifier_forest(writer)
+    reg_results = train_regressor_forest(writer)
+    writer.close()
+    return cls_results, reg_results
+
+
+def train_classifier_forest(writer:bool =True) -> dict[str:float]:
     """
     Run the random forest training for classification.
     """
@@ -44,10 +54,19 @@ def train_classifier_forest() -> dict[str:float]:
 
     eval = Evaluator.classifier_eval(model, x, y)
     print(f"Evaluation scores: {eval}")
+    confusion_matrix = eval["confusion_matrix"]
+    num_classes = eval["num_classes"]
+    buf = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
+    if writer:
+        write_summary().add_scalar("Classifier/Accuracy", eval["accuracy"], 0)
+        write_summary().add_scalar("Classifier/F1", eval["f1_score"], 0)
+        write_summary().add_scalar("Classifier/top_k", eval["top_k"], 0)
+        write_summary().add_scalar("Classifier/multiroc", eval["multiroc"], 0)
+        # write_summary().add_image("Classifier/Confusion Matrix", buf, 0, dataformats="HW")
     return eval
 
 
-def train_regressor_forest() -> float:
+def train_regressor_forest(writer:bool =True) -> float:
     """
     Run the random forest training for regression.
     """
@@ -83,4 +102,6 @@ def train_regressor_forest() -> float:
 
     iou = Evaluator.get_IOU(model, x, y)
     print(f"iou: {iou}")
+    if writer:
+        write_summary().add_scalar("Regressor/IOU", iou, 0)
     return iou

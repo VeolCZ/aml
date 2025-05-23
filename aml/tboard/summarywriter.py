@@ -1,19 +1,8 @@
 from torch.utils.tensorboard import SummaryWriter
 from matplotlib import pyplot as plt
-from tboard.plotting import plot_confusion_matrix
-from random_forests.forest_train_util import train_classifier_forest  # , train_regressor_forest
-# from ViT.ViT_utils import train_vit
-# rom ViT.ViT import epoch_loss
-# from evaluator.Evaluator import Evaluator
-
-forest_cls_eval = train_classifier_forest()
-# orest_reg_eval = train_regressor_forest() # comment it out if only classifier is run
-# orest_cls_eval["iou"] = forest_reg_eval # same here
-# iT_eval = train_vit()
-confusion_matrix = eval["confusion_matrix"]
-num_classes = eval["num_classes"]
-buf = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
-image = plt.imread(buf, format='png')
+from torch import tensor
+import datetime
+import os
 """
 Access eval metrics an somehow extract them from dict or another method
 Graphs:
@@ -30,8 +19,9 @@ maybe plots:
 """
 
 
-writer = SummaryWriter()
-# r epoch in epoch_loss.keys():
-# riter.addscalar("training validation",epoch_loss[epoch],epoch)
-writer.add_image("Confusion_Matrix", image, global_step=0, dataformats='HWC')
-writer.close()
+def write_summary(run_name: str = "random_forest", base_log_dir: str="runs"):
+    timestamp = "thing"
+    log_dir = os.path.join(base_log_dir, f"{run_name}_{timestamp}")
+    return SummaryWriter(log_dir=log_dir)
+
+
