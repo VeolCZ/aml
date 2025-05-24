@@ -3,11 +3,8 @@ import sys
 from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit
 from make_visualisations import make_visualization
 from make_labels import make_labels
-from random_forests.forest_train_util import eval_composite, train_classifier_forest, train_composite, train_forests
+from random_forests.forest_utils import eval_composite, train_composite
 from api.api import serve
-from make_labels import make_labels
-from make_visualisations import make_visualization
-from ViT.ViT_utils import optimize_hyperparameters, train_vit
 
 
 logging.basicConfig(
@@ -32,8 +29,8 @@ command_map = {
     "--train_vit": (train_vit, "Train ViT and save the model to /data"),
     "--eval_vit": (eval_vit, "Eval ViT"),
     "--optimize_hyperparams": (optimize_hyperparameters, "Optimize hyperparameters for ViT"),
-    "--forest_train": (train_composite, "Train random forests"),
-    "--forest_eval": (eval_composite, "Eval random forests"),
+    "--train_forest": (train_composite, "Train random forests"),
+    "--eval_forest": (eval_composite, "Eval random forests"),
     "--serve": (serve, "Serve the models through API"),
 }
 

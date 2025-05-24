@@ -59,7 +59,7 @@ def eval_vit(writer: bool = False) -> None:
     device = torch.device("cuda")
 
     model = ViT()
-    model.load("/data/ViT_2025-05-16 12:28:42.294240ValLoss_1.84.pth")
+    model.load("/weights/ViT_2025-05-16 12:28:42.294240ValLoss_1.84.pth")
     model.to(device=device)
 
     eval_dataset = ViTImageDataset(type="eval")
@@ -73,42 +73,47 @@ def eval_vit(writer: bool = False) -> None:
         random_state=SEED
     )
     test_dataset = Subset(eval_dataset, test_indices)
+    dataloader = DataLoader(
+        test_dataset,
+        batch_size=320,
+        shuffle=True,
+        num_workers=multiprocessing.cpu_count(),
+        pin_memory=True
+    )
 
-    x_test: list[torch.Tensor] = []
-    y_test: list[torch.Tensor] = []
-    z_test: list[torch.Tensor] = []
-    for img, label in iter(test_dataset):
-        x_test.append(img)
-        y_test.append(label["cls"])
-        z_test.append(label["bbox"].squeeze(0))
+    x_all_batches: list[torch.Tensor] = []
+    y_all_batches: list[torch.Tensor] = []
+    z_all_batches: list[torch.Tensor] = []
 
-    x = torch.stack(x_test, dim=0)
-    y = torch.stack(y_test, dim=0)
-    z = torch.stack(z_test, dim=0).squeeze(0)
-    # acc = Evaluator.get_accuracy(model, x, y)
-    # print(f"acc: {acc}")
+    for _, (imgs_batch, labels_batch) in enumerate(dataloader):
+        x_all_batches.append(imgs_batch)
+        y_all_batches.append(labels_batch["cls"])
+        z_all_batches.append(labels_batch["bbox"])
 
-    iou = Evaluator.get_IOU(model, x, z)
-    print(f"iou: {iou}")
+    x = torch.cat(x_all_batches, dim=0)
+    y = torch.cat(y_all_batches, dim=0)
+    z = torch.cat(z_all_batches, dim=0).squeeze(1)
 
-    # top_5 = Evaluator.get_top_k(model, x, y, 5)
-    # print(f"top_5: {top_5}")
+    print(x.shape)
+    print(y.shape)
+    print(z.shape)
 
-    eval = Evaluator.classifier_eval(model, x, y)
-
-    confusion_matrix = eval["confusion_matrix"]
-    num_classes = eval["num_classes"]
+    eval_res = Evaluator.eval(model, x, y, z)
+    confusion_matrix = eval_res.confusion_matrix
+    num_classes = eval_res.num_classes
     image = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
 
-    if writer:
-        write_summary(run_name="ViT").add_scalar("ViT/Accuracy", eval["accuracy"], 0)
-        write_summary(run_name="ViT").add_scalar("ViT/F1", eval["f1_score"], 0)
-        write_summary(run_name="ViT").add_scalar("ViT/top_k", eval["top_k"], 0)
-        write_summary(run_name="ViT").add_scalar("ViT/multiroc", eval["multiroc"], 0)
-        write_summary(run_name="ViT").add_scalar("ViT/iou", iou, 0)
-        write_summary(run_name="ViT").add_image("ViT/Confusion Matrix", image, 0)
-        # for epoch in epoch_loss.keys():
-        #     write_summary().add_scalar("ViT/epoch_loss", epoch_loss[epoch], epoch)
+    print(eval_res)
+
+    # if writer:
+    # write_summary(run_name="ViT").add_scalar("ViT/Accuracy", eval["accuracy"], 0)
+    # write_summary(run_name="ViT").add_scalar("ViT/F1", eval["f1_score"], 0)
+    # write_summary(run_name="ViT").add_scalar("ViT/top_k", eval["top_k"], 0)
+    # write_summary(run_name="ViT").add_scalar("ViT/multiroc", eval["multiroc"], 0)
+    # write_summary(run_name="ViT").add_scalar("ViT/iou", iou, 0)
+    # write_summary(run_name="ViT").add_image("ViT/Confusion Matrix", image, 0)
+    # for epoch in epoch_loss.keys():
+    #     write_summary().add_scalar("ViT/epoch_loss", epoch_loss[epoch], epoch)
     # How to tensor board:
     # writer = SummaryWriter("/logs/tensor_board")
     # writer.add_scalar('iou', iou)
