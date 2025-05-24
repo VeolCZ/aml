@@ -4,9 +4,10 @@ import logging
 import torch
 import numpy as np
 import multiprocessing
-from ViT.ViT import ViT, ViTTrainer #, epoch_loss
+from ViT.ViT import ViT
 from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
+from ViT.ViTTrainer import ViTTrainer
 from evaluator.Evaluator import Evaluator
 from preprocessing.ViTImageDataset import ViTImageDataset
 from tboard.summarywriter import write_summary
@@ -51,7 +52,7 @@ def train_vit() -> None:
     model.fit(train_dataset_subset)
 
 
-def eval_vit(writer:bool = False) -> None:
+def eval_vit(writer: bool = False) -> None:
     # Config
     SEED = int(os.getenv("SEED", 123))
     torch.manual_seed(SEED)
@@ -100,12 +101,12 @@ def eval_vit(writer:bool = False) -> None:
     image = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
 
     if writer:
-        write_summary(run_name= "ViT").add_scalar("ViT/Accuracy", eval["accuracy"], 0)
-        write_summary(run_name= "ViT").add_scalar("ViT/F1", eval["f1_score"], 0)
-        write_summary(run_name= "ViT").add_scalar("ViT/top_k", eval["top_k"], 0)
-        write_summary(run_name= "ViT").add_scalar("ViT/multiroc", eval["multiroc"], 0)
-        write_summary(run_name= "ViT").add_scalar("ViT/iou", iou, 0)
-        write_summary(run_name= "ViT").add_image("ViT/Confusion Matrix", image, 0)
+        write_summary(run_name="ViT").add_scalar("ViT/Accuracy", eval["accuracy"], 0)
+        write_summary(run_name="ViT").add_scalar("ViT/F1", eval["f1_score"], 0)
+        write_summary(run_name="ViT").add_scalar("ViT/top_k", eval["top_k"], 0)
+        write_summary(run_name="ViT").add_scalar("ViT/multiroc", eval["multiroc"], 0)
+        write_summary(run_name="ViT").add_scalar("ViT/iou", iou, 0)
+        write_summary(run_name="ViT").add_image("ViT/Confusion Matrix", image, 0)
         # for epoch in epoch_loss.keys():
         #     write_summary().add_scalar("ViT/epoch_loss", epoch_loss[epoch], epoch)
     # How to tensor board:

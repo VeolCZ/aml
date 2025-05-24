@@ -57,3 +57,10 @@ def parse_labels(base_path: str) -> pd.DataFrame:
 def make_labels() -> None:
     df = parse_labels("/data/CUB_200_2011")
     df.to_csv("/data/labels.csv", index=False)
+
+
+def get_classes() -> dict[int, str]:
+    df = pd.read_csv("/data/CUB_200_2011/classes.txt", sep=" ", header=None, names=["id", "class"])
+    df = df["class"].apply(lambda x: x.split(".")[1].replace("_", " "))
+    images: dict[int, str] = df.to_dict()
+    return images
