@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from random_forests.CompositeRandomForest import CompositeRandomForest
 from evaluator.Evaluator import Evaluator
 from random_forests.RandomForestClassifier import RandomForestClassifierModel
 from random_forests.RandomForestRegressor import RandomForestRegressorModel
@@ -10,6 +11,59 @@ from tboard.plotting import plot_confusion_matrix
 from tboard.summarywriter import write_summary
 
 
+def train_composite() -> None:
+    model = CompositeRandomForest()
+
+    train_dataset = TreeImageDataset(type="train")
+
+    all_labels = train_dataset.get_cls_labels()
+    train_indices, _, _, _ = train_test_split(
+        np.arange(len(train_dataset)),
+        all_labels,
+        test_size=0.1,
+        stratify=all_labels,
+        random_state=123  # ADD SEED
+    )
+
+    train_dataset_subset = Subset(train_dataset, train_indices)
+
+    model.fit(train_dataset_subset)
+    model.save_model("/weights/forest")
+
+
+def eval_composite() -> None:
+    model = CompositeRandomForest()
+    model.load("/weights/forest")
+
+    train_dataset = TreeImageDataset(type="train")
+    eval_dataset = TreeImageDataset(type="eval")
+
+    all_labels = train_dataset.get_cls_labels()
+    _, test_indices, _, _ = train_test_split(
+        np.arange(len(train_dataset)),
+        all_labels,
+        test_size=0.1,
+        stratify=all_labels,
+        random_state=123  # ADD SEED
+    )
+
+    test_dataset = Subset(eval_dataset, test_indices)
+    x_test: list[torch.Tensor] = []
+    y_test: list[torch.Tensor] = []
+
+    for img, label in iter(test_dataset):
+        x_test.append(img)
+        one_hot_cls = torch.zeros((200), dtype=torch.float)
+        one_hot_cls[label["cls"]] = 1.0
+        y_test.append(one_hot_cls)
+
+    x = torch.stack(x_test, dim=0)
+    y = torch.stack(y_test, dim=0)
+
+    eval = Evaluator.classifier_eval(model, x, y)
+    print(f"Evaluation scores: {eval}")
+
+
 def train_forests() -> dict[str:float]:
     writer = write_summary(run_name="aml/runs/random_forest_thing")
     cls_results = train_classifier_forest(writer)
@@ -18,13 +72,13 @@ def train_forests() -> dict[str:float]:
     return cls_results, reg_results
 
 
-def train_classifier_forest(writer:bool =True) -> dict[str:float]:
+def train_classifier_forest(writer: bool = False) -> dict[str, float]:
     """
     Run the random forest training for classification.
     """
     PATH = "/logs/forest_classifier.pkl"
     model = RandomForestClassifierModel()
-
+    model.load(PATH)
     train_dataset = TreeImageDataset(type="train")
     eval_dataset = TreeImageDataset(type="eval")
 
@@ -32,7 +86,7 @@ def train_classifier_forest(writer:bool =True) -> dict[str:float]:
     train_indices, test_indices, _, _ = train_test_split(
         np.arange(len(train_dataset)),
         all_labels,
-        test_size=0.5,
+        test_size=0.1,
         stratify=all_labels,
         random_state=123  # ADD SEED
     )
@@ -41,32 +95,36 @@ def train_classifier_forest(writer:bool =True) -> dict[str:float]:
     test_dataset = Subset(eval_dataset, test_indices)
 
     model.fit(train_dataset_subset)
-    # forest.save_model(PATH)
+    model.save_model(PATH)
 
     x_test: list[torch.Tensor] = []
     y_test: list[torch.Tensor] = []
+
     for img, label in iter(test_dataset):
         x_test.append(img)
-        y_test.append(label["cls"])
+        one_hot_cls = torch.zeros((200), dtype=torch.float)
+        one_hot_cls[label["cls"]] = 1.0
+        y_test.append(one_hot_cls)
+        # y_test.append(label["cls"])
 
     x = torch.stack(x_test, dim=0)
-    y = torch.stack(y_test, dim=1)
+    y = torch.stack(y_test, dim=0)
 
     eval = Evaluator.classifier_eval(model, x, y)
     print(f"Evaluation scores: {eval}")
     confusion_matrix = eval["confusion_matrix"]
     num_classes = eval["num_classes"]
     image = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
-    if writer:
-        write_summary().add_scalar("Classifier/Accuracy", eval["accuracy"], 0)
-        write_summary().add_scalar("Classifier/F1", eval["f1_score"], 0)
-        write_summary().add_scalar("Classifier/top_k", eval["top_k"], 0)
-        write_summary().add_scalar("Classifier/multiroc", eval["multiroc"], 0)
-        write_summary().add_image("Classifier/Confusion Matrix", image, 0)
+    # if writer:
+    # write_summary().add_scalar("Classifier/Accuracy", eval["accuracy"], 0)
+    # write_summary().add_scalar("Classifier/F1", eval["f1_score"], 0)
+    # write_summary().add_scalar("Classifier/top_k", eval["top_k"], 0)
+    # write_summary().add_scalar("Classifier/multiroc", eval["multiroc"], 0)
+    # write_summary().add_image("Classifier/Confusion Matrix", image, 0)
     return eval
 
 
-def train_regressor_forest(writer:bool =True) -> float:
+def train_regressor_forest(writer: bool = True) -> float:
     """
     Run the random forest training for regression.
     """

@@ -19,6 +19,7 @@ services:
     volumes:
       - ./aml:/aml
       - ./data:/data
+      - ./weights:/weights
       - ./logs:/logs
     runtime: nvidia
     healthcheck:

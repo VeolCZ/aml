@@ -1,9 +1,9 @@
+from typing import Dict
 import torch
 import torchvision
 from sklearn.metrics import accuracy_score
 from interface.ModelInterface import ModelInterface
-from torcheval.metrics.functional import multiclass_auroc, multiclass_f1_score, multiclass_confusion_matrix
-from typing import Dict
+from torcheval.metrics.functional import multiclass_auroc, multiclass_f1_score, multiclass_confusion_matrix, multiclass_accuracy
 
 
 class Evaluator:
@@ -30,7 +30,7 @@ class Evaluator:
         return float(torchvision.ops.complete_box_iou_loss(bbox, true_label, reduction="mean").item())
 
     @staticmethod
-    def get_top_k(cls: torch.Tensor, true_label_indices, k: int) -> float:
+    def get_top_k(cls: torch.Tensor, true_label_indices: torch.Tensor, k: int) -> float:
         """
         Calculate the top-k accuracy of the model predictions.
         :param CLS: The model predictions.
@@ -54,7 +54,6 @@ class Evaluator:
         :param true_label_indices: The true labels.
         :return: The ROC AUC score.
         """
-        cls = cls.squeeze(-1)
         return float(multiclass_auroc(cls, true_label_indices, num_classes=cls.shape[1]))
 
     @staticmethod
@@ -65,7 +64,6 @@ class Evaluator:
         :param true_label_indices: The true labels.
         :return: The F1 score.
         """
-        cls = cls.squeeze(-1)
         return float(multiclass_f1_score(cls, true_label_indices, num_classes=cls.shape[1], average="weighted"))
 
     @staticmethod
@@ -76,22 +74,21 @@ class Evaluator:
         :param true_label_indices: The true labels.
         :return: The confusion matrix.
         """
-        cls = cls.squeeze(-1)
         return multiclass_confusion_matrix(cls, true_label_indices, num_classes=cls.shape[1], normalize="all")
 
     @staticmethod
-    def best_and_worst(confusion_matrix: torch.Tensor, k:int = 3):
+    def best_and_worst(pred_label_indices: torch.Tensor, true_label_indices: torch.Tensor, num_classes: int, k: int = 3) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Get the best and worst performing classes based on the confusion matrix.
-        :param confusion_matrix: The confusion matrix.
-        :param k: The number of classes to consider.
-        :return: A tuple containing the best and worst performing classes.
+        Computing top k best and worst performing glasses based on the per-class accuracy.
         """
-        class_accuracy = confusion_matrix.diagonal() / confusion_matrix.sum(axis=1)
-        class_accuracy = class_accuracy[~torch.isnan(class_accuracy)]
-        best_classes = class_accuracy.argsort()[-k:][::-1]
-        worst_classes = class_accuracy.argsort()[:k]
-        return best_classes, worst_classes
+        per_class_acc = multiclass_accuracy(
+            input=pred_label_indices, target=true_label_indices, num_classes=num_classes, average=None)
+        valid = ~torch.isnan(per_class_acc)
+        valid_accs = per_class_acc[valid]
+        k = min(k, len(valid_accs))
+        best = torch.argsort(valid_accs, descending=True)[:k]
+        worst = torch.argsort(valid_accs, descending=False)[:k]
+        return best, worst
 
     @staticmethod
     def classifier_eval(model: ModelInterface, input_data: torch.Tensor, true_label: torch.Tensor) -> Dict[str, float]:
@@ -103,13 +100,15 @@ class Evaluator:
         :return: A dictionary containing the evaluation results.
         """
         _, cls = model.predict(input_data)
-        true_label_indices = torch.argmax(true_label, dim=1)
+        true_label_indices = torch.argmax(true_label, dim=-1)
+
         acc = Evaluator.get_accuracy(cls, true_label_indices)
         top_k = Evaluator.get_top_k(cls, true_label_indices, k=5)
         multiroc = Evaluator.multiroc(cls, true_label_indices)
         f1 = Evaluator.f1_score(cls, true_label_indices)
         confusion_matrix = Evaluator.confusion_matrix(cls, true_label_indices)
-        best_classes, worst_classes = Evaluator.best_and_worst(confusion_matrix)
+        best, worst = Evaluator.best_and_worst(cls, true_label_indices, cls.shape[1], k=3)
+
         eval_results = {
             "accuracy": acc,
             "top_k": top_k,
@@ -117,7 +116,7 @@ class Evaluator:
             "f1_score": f1,
             "confusion_matrix": confusion_matrix,
             "num_classes": cls.shape[1],
-            "best_classes": best_classes,
-            "worst_classes": worst_classes,
+            "best_classes": best,
+            "worst_classes": worst,
         }
         return eval_results
