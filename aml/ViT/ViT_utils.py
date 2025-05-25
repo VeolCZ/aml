@@ -59,7 +59,7 @@ def eval_vit(writer: bool = False) -> None:
     device = torch.device("cuda")
 
     model = ViT()
-    model.load("/weights/ViT_2025-05-16 12:28:42.294240ValLoss_1.84.pth")
+    model.load("/weights/ViT_2025-05-16-12-28.294240ValLoss_1.84.pth")
     model.to(device=device)
 
     eval_dataset = ViTImageDataset(type="eval")

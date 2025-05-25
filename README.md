@@ -17,6 +17,13 @@
 cp .env.example .env # copy and edit the environment file
 ```
 
+#### 2. Fetch Artifacts
+
+```bash
+git lfs fetch --all
+git lfs pull
+```
+
 ### Usage
 
 #### Build the container

@@ -65,7 +65,7 @@ class ViTAPI(ls.LitAPI):
         """
         self.device = device
         self.vit = ViT()
-        self.vit.load("/weights/ViT_2025-05-16 12:28:42.294240ValLoss_1.84.pth")
+        self.vit.load("weights/ViT_2025-05-16-12-28.294240ValLoss_1.84.pth")
         self.forest = CompositeRandomForest()
         self.forest.load("/weights/forest")
         self.vit_preprocess = ViTPreprocessPipeline.vit_predict_transform
