@@ -18,6 +18,11 @@ class RandomForestRegressorModel(RandomForest):
                                                random_state=123, n_estimators=1_000))  # ADD SEED
 
     def fit(self, train_dataset: Dataset) -> None:
+        """
+        Trains the model
+        Args:
+            train_dataset(Dataset): the dataset the forest needs to be trained on.
+        """
         x_train, y_train = [], []
         dataloader = DataLoader(
             train_dataset,
@@ -37,6 +42,13 @@ class RandomForestRegressorModel(RandomForest):
             self.model.fit(x_train_ds, y_train_ds)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Makes a prediction from the model(bounding box)
+        Args:
+            data(torch:Tensor): image in the form of a tensor.
+        Returns:
+            prediction(tuple(torch.Tensor,torch.Tensor)): first tensor contains the boundingbox prediction
+                the second tensor is empty
+        """
         bbox = self.model.predict(data)
-
         return torch.tensor(bbox), torch.empty((1))

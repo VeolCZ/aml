@@ -7,26 +7,56 @@ from torch.utils.data import Dataset
 
 
 class CompositeRandomForest(ModelInterface):
+    """
+    Composite forest, contains both a Random forest classifier
+    and a random forest regressor
+    Attributes
+        classifier: the randomforest classifier.
+        regressor: the randomforest regressor.
+    """
     def __init__(self) -> None:
         super().__init__()
         self.classifier = RandomForestClassifierModel()
         self.regressor = RandomForestRegressorModel()
 
     def fit(self, train_dataset: Dataset) -> None:
+        """
+        Trains both randomforests
+        Args:
+            train_dataset(Dataset): the dataset the forest needs to be trained on.
+        """
         self.classifier.fit(train_dataset)
         self.regressor.fit(train_dataset)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Makes a prediction from both randomforests(prbability distribution of classes)
+        Args:
+            data(torch:Tensor): image in the form of a tensor.
+        Returns:
+            prediction(tuple(torch.Tensor,torch.Tensor)): First tensor contains the boundingbox prediction.
+                The second tensor contains the distribution of probability of classes.
+        """
         _, cls = self.classifier.predict(data)
         bbox, _ = self.regressor.predict(data)
         return bbox, cls
 
     def save_model(self, path: str) -> None:
+        """
+        Saves both randomforests
+        Args:
+            path(str): the path to the directory where the forests need to be saved.
+        """
         if not os.path.isdir(path):
             os.mkdir(path)
         self.classifier.save_model(path + "/classifier.pkl")
         self.regressor.save_model(path + "/regressor.pkl")
 
     def load(self, path: str) -> None:
+        """
+        loads both randomforests
+        Args:
+            path(str): The path to the directory where the forests are saved.
+        """
         self.classifier.load(path + "/classifier.pkl")
         self.regressor.load(path + "/regressor.pkl")

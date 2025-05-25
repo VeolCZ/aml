@@ -18,6 +18,11 @@ class RandomForestClassifierModel(RandomForest):
                                                 random_state=123, n_estimators=1_000))  # ADD SEED
 
     def fit(self, train_dataset: Dataset) -> None:
+        """
+        Trains the model
+        Args:
+            train_dataset(Dataset): the dataset the forest needs to be trained on.
+        """
         x_train, y_train = [], []
         dataloader = DataLoader(
             train_dataset,
@@ -37,6 +42,14 @@ class RandomForestClassifierModel(RandomForest):
             self.model.fit(x_train_ds, y_train_ds)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Makes a prediction from the model(prbability distribution of classes)
+        Args:
+            data(torch:Tensor): image in the form of a tensor.
+        Returns:
+            prediction(tuple(torch.Tensor,torch.Tensor)): first tensor is empty
+                the second tensor contains the distribution of probability of classes.
+        """
         cls = self.model.predict_proba(data)
 
         return torch.empty((1)), torch.tensor(cls)

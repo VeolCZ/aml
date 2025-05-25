@@ -10,6 +10,9 @@ from tboard.summarywriter import write_summary
 
 
 def train_composite() -> None:
+    """
+    Trains a composite Randomforest based on a predetermined dataset.
+    """
     model = CompositeRandomForest()
 
     train_dataset = TreeImageDataset(type="train")
@@ -30,6 +33,15 @@ def train_composite() -> None:
 
 
 def eval_composite() -> None:
+    """
+    Evaluates the composite forest on several metrics including:
+        Accuracy
+        top 5 accuracy
+        F1 score
+        Multiroc
+        Confusion matrix
+    It prints these evaluations in the terminal.
+    """
     model = CompositeRandomForest()
     model.load("/weights/forest")
 
