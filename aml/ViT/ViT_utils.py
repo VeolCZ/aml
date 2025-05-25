@@ -52,8 +52,16 @@ def train_vit() -> None:
     model.fit(train_dataset_subset)
 
 
-def eval_vit(writer: bool = False) -> None:
-    # Config
+def eval_vit() -> None:
+    """
+    Evaluates the ViT on several metrics including:
+        Accuracy
+        top 5 accuracy
+        F1 score
+        Multiroc
+        Confusion matrix
+    It prints these evaluations in the terminal.
+    """
     SEED = int(os.getenv("SEED", 123))
     torch.manual_seed(SEED)
     device = torch.device("cuda")
@@ -104,26 +112,6 @@ def eval_vit(writer: bool = False) -> None:
     image = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
 
     print(eval_res)
-
-    # if writer:
-    # write_summary(run_name="ViT").add_scalar("ViT/Accuracy", eval["accuracy"], 0)
-    # write_summary(run_name="ViT").add_scalar("ViT/F1", eval["f1_score"], 0)
-    # write_summary(run_name="ViT").add_scalar("ViT/top_k", eval["top_k"], 0)
-    # write_summary(run_name="ViT").add_scalar("ViT/multiroc", eval["multiroc"], 0)
-    # write_summary(run_name="ViT").add_scalar("ViT/iou", iou, 0)
-    # write_summary(run_name="ViT").add_image("ViT/Confusion Matrix", image, 0)
-    # for epoch in epoch_loss.keys():
-    #     write_summary().add_scalar("ViT/epoch_loss", epoch_loss[epoch], epoch)
-    # How to tensor board:
-    # writer = SummaryWriter("/logs/tensor_board")
-    # writer.add_scalar('iou', iou)
-    # writer.add_scalar('acc', acc)
-    # for n_iter in range(100):
-    #     writer.add_scalar('Loss/train', np.random.random(), n_iter)
-    #     writer.add_scalar('Loss/test', np.random.random(), n_iter)
-    #     writer.add_scalar('Accuracy/train', np.random.random(), n_iter)
-    #     writer.add_scalar('Accuracy/test', np.random.random(), n_iter)
-    # writer.close()
 
 
 def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
