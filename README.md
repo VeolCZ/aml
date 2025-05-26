@@ -1,6 +1,6 @@
 # AML
 
-### Docker Setup Guide
+## Project Setup Guide
 
 #### Prerequisites
 
@@ -8,65 +8,49 @@
 -   Docker Compose (v2.0+ recommended)
 -   NVIDIA Container Toolkit (for GPU support)
 -   Python 3.12 (for local development)
+-   Git+Git lfs
 
-### Quick Start
-
-#### 1. Configure Environment
-
+### Pull latest changes
 ```bash
-cp .env.example .env # copy and edit the environment file
+git checkout main
+git pull
+git lfs pull
 ```
 
-### Usage
-
-#### Build the container
+### Build the container
+Dont be afraid if this process is slow - you are building an entire computer after all :).
 
 ```bash
 sudo bash build.sh # or execute the content of build.sh
 ```
 
 #### Start the container
+After running the script the first time a help message explaining how to proceed will be shown.
 
 ```bash
 sudo bash run.sh # or execute the content of run.sh
 ```
 
-### Contributions
+## Windows notes
+Ensure that you have WSL installed and execute these command using the WSL console as the project is build with unix like environment in mind. Additionaly Docker is sometimes missbehaving on windows but please make sure the Docker app is running when you execute the `build.sh` / `run.sh` commands. Also it might not be necessary to use `sudo` and `bash` when using WSL depending on how your environment is setup. Additionaly you might encounter issues loading some files as windows has issues with certain characters in file names. In those cases rename the problematic files accordingly.
 
-First pull the repository to you environment using your preferd way. Afterwards and before making new brach execute the following.
+## Running without CUDA GPU
+To disable GPU support (and therefore avoid related issues) simply delete `docker-compose.override.yaml` from the root. However be careful not to commit these changes :).
 
-```bash
-git fetch
-git checkout main
-```
+## Project Structure
 
-To create your own branch make sure that you are on the main branch and then create a branch starting off main.
-
-```bash
-git fetch # get new data from github
-git branch # should show main
-git checkout main # if main is not shown swith branch to main
-git branch NAME # make a branch with a descriptive name
-git checkout NAME # go to your branch
-```
-
-Afterwards develop on your branch like you would normally.
-
-```bash
-git add . # add your changes to the branch
-git commit -m MESSAGE # commit the changes to the branch with descpritive message
-git push # push your changes to github
-```
-
-Once you are satisfied with the state of your branch move to github. [Navigate to](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request) `Pull requests` -> `New pull request`. Here select `base: main` and `compare: YOUR_BRACH`. Then create the pull request. Now you should see all the changes you have made in comparrison with the main branch. Verify that this is what you wanted. Also automatic checks will run to validate the code. Now you need to assign reviewers and hit others up on whatsapp. Once the pull request (PR) gets approved by others it will be merged to the main branch and you can make a new branch from the new main. If the changes are not mergable (you will see this) you need to perform a merge but in that case it is easier to hit someone up to help you resolve the merge.
-
-### Project Structure
-
-├── aml/ # Project code (→ /aml in container)\
-├── data/ # Persistent data (→ /data)\
-├── logs/ # Application logs (→ /logs)\
-├── pyproject.toml # Development dependencies\
-├── Dockerfile # Container definition\
-├── docker-compose.yml # Orchestration config\
-├── requirements.txt # Python dependencies\
-└── .env # Environment config
+├── aml # Main program files (/aml in container) \
+├── data # Dataset related files (/data in container) \
+├── logs # Prograns logs (/logs in container) \
+├── weights # Weights for models (/weights in container) \
+├── API-docs.md # Docs for the API \
+├── build.sh # Build script for Docker \
+├── docker-compose.yaml # Docker orchestration config \
+├── Dockerfile # Definition of Docker image \
+├── .env # Project wide settings \
+├── .env-example # Example for .env \
+├── pyproject.toml # Development dependencies \
+├── README.md # This file \
+├── requirements.txt # Runtime dependencies \
+├── .github # CI pipeline \
+└── run.sh # Run script for Docker \

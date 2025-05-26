@@ -1,0 +1,4 @@
+services:
+  app:
+    runtime: nvidia
+    shm_size: "20g"
