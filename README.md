@@ -2,7 +2,7 @@
 
 ## Project Setup Guide
 
-#### Prerequisites
+### Prerequisites
 
 -   Docker (v20.10+ recommended)
 -   Docker Compose (v2.0+ recommended)
@@ -25,7 +25,7 @@ Dont be afraid if this process is slow - you are building an entire computer aft
 sudo bash build.sh # or execute the content of build.sh
 ```
 
-#### Start the container
+### Start the container
 After running the script the first time a help message explaining how to proceed will be shown.
 
 ```bash
