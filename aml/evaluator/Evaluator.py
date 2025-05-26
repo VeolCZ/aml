@@ -26,9 +26,10 @@ class Evaluator:
     def get_accuracy(clas: torch.Tensor, true_label_indices: torch.Tensor) -> float:
         """
         Calculate the accuracy of the model predictions.
-        :param clas: The model predictions.
-        :param true_label_indices: The true labels.
-        :return: The accuracy score.
+        args:
+            clas (torch.Tensor): The model predictions.
+            true_label_indices (torch.Tensor): The true labels.
+        returns: The accuracy score.
         """
         return float(accuracy_score(true_label_indices, clas.argmax(dim=1)))
 
@@ -36,10 +37,10 @@ class Evaluator:
     def get_IOU(bbox: torch.Tensor, true_label: torch.Tensor) -> float:
         """
         Calculate the Intersection over Union (IoU) for the model predictions.
-        :param model: The model to evaluate.
-        :param input_data: The input data for the model.
-        :param true_label: The true labels.
-        :return: The IoU score.
+        args:
+            bbox (torch.Tensor): The predicted bounding boxes.
+            true_label (torch.Tensor): The true bounding boxes.
+        returns: The IoU score.
         """
         return float(torchvision.ops.complete_box_iou_loss(bbox, true_label, reduction="mean").item())
 
@@ -47,10 +48,11 @@ class Evaluator:
     def get_top_k(clas: torch.Tensor, true_label_indices: torch.Tensor, k: int) -> float:
         """
         Calculate the top-k accuracy of the model predictions.
-        :param clas: The model predictions.
-        :param true_label_indices: The true labels.
-        :param k: The number of top predictions to consider.
-        :return: The top-k accuracy score.
+        args:
+            clas (torch.Tensor): The model predictions.
+            true_label_indices (torch.Tensor): The true labels.
+            k (int): The number of top predictions to consider.
+        returns: The top-k accuracy score.
         """
         true_label_indices = true_label_indices.unsqueeze(dim=1)
         _, top_k_indices = torch.topk(clas, k=k, dim=1)
@@ -64,9 +66,10 @@ class Evaluator:
     def multiroc(clas: torch.Tensor, true_label_indices: torch.Tensor) -> float:
         """
         Calculate the multi-class ROC AUC score.
-        :param clas: The model predictions.
-        :param true_label_indices: The true labels.
-        :return: The ROC AUC score.
+        args:
+            clas (torch.Tensor): The model predictions.
+            true_label_indices (torch.Tensor): The true labels.
+        returns: The multi-class ROC AUC score.
         """
         return float(multiclass_auroc(clas, true_label_indices, num_classes=clas.shape[1]))
 
@@ -74,9 +77,10 @@ class Evaluator:
     def f1_score(clas: torch.Tensor, true_label_indices: torch.Tensor) -> float:
         """
         Calculate the F1 score for the model predictions.
-        :param clas: The model predictions.
-        :param true_label_indices: The true labels.
-        :return: The F1 score.
+        args:
+            clas (torch.Tensor): The model predictions.
+            true_label_indices (torch.Tensor): The true labels.
+        returns: The F1 score.
         """
         return float(multiclass_f1_score(clas, true_label_indices, num_classes=clas.shape[1], average="weighted"))
 
@@ -84,9 +88,10 @@ class Evaluator:
     def confusion_matrix(clas: torch.Tensor, true_label_indices: torch.Tensor) -> torch.Tensor:
         """
         Calculate the confusion matrix for the model predictions.
-        :param clas: The model predictions.
-        :param true_label_indices: The true labels.
-        :return: The confusion matrix.
+        args:
+            clas (torch.Tensor): The model predictions.
+            true_label_indices (torch.Tensor): The true labels.
+        returns: The confusion matrix.
         """
         return multiclass_confusion_matrix(clas, true_label_indices, num_classes=clas.shape[1], normalize="pred")
 
@@ -97,6 +102,12 @@ class Evaluator:
                        ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Computing top k best and worst performing glasses based on the per-class accuracy.
+        args:
+            pred_label_indices (torch.Tensor): The predicted labels.
+            true_label_indices (torch.Tensor): The true labels.
+            num_classes (int): The number of classes.
+            k (int): The number of best and worst classes to return.
+        returns: A tuple containing the indices of the best and worst classes.
         """
         per_class_acc = multiclass_accuracy(
             input=pred_label_indices, target=true_label_indices, num_classes=num_classes, average=None)
@@ -113,10 +124,12 @@ class Evaluator:
              ) -> EvalMetric:
         """
         Evaluate the model using various metrics.
-        :param model: The model to evaluate.
-        :param input_data: The input data for the model.
-        :param true_label: The true labels.
-        :return: A dictionary containing the evaluation results.
+        args:
+            model (ModelInterface): The model to evaluate.
+            input_data (torch.Tensor): The input data for the model.
+            clas_label (torch.Tensor): The true class labels.
+            bbox_label (torch.Tensor): The true bounding box labels.
+        returns: An EvalMetric object containing the evaluation results.
         """
         bbox, clas = model.predict(input_data)
         true_label_indices = torch.argmax(clas_label, dim=-1)
