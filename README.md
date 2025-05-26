@@ -14,6 +14,7 @@
 ```bash
 git checkout main
 git pull
+git lfs fetch --all
 git lfs pull
 ```
 
