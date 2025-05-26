@@ -97,6 +97,7 @@ class ViT(torch.nn.Module, ModelInterface):
         epochs = 20
         patience = 4
 
+        self.to(device=device)
         trainer = ViTTrainer(self, device, dataset,
                              epochs=epochs, batch_size=batch_size, patience=patience,
                              learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
@@ -118,4 +119,6 @@ class ViT(torch.nn.Module, ModelInterface):
         return bbox, cls
 
     def load(self, path: str) -> None:
-        self.load_state_dict(torch.load(path))
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.to(device=device)
+        self.load_state_dict(torch.load(path, map_location=device))

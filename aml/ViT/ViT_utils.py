@@ -18,53 +18,56 @@ def train_vit() -> None:
     Global variables:
         device (torch.device): The device (CPU or CUDA) on which to perform computations.
     """
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
 
     # Config
-    device = torch.device("cuda")
     SEED = int(os.getenv("SEED", 123))
+    TEST_SIZE = 0.1
     torch.manual_seed(SEED)
-    batch_size = 350
 
     # Datasets
     train_dataset = ViTImageDataset(type="train")
-    eval_dataset = ViTImageDataset(type="eval")
 
     all_labels = train_dataset.get_cls_labels()
-    train_indices, test_indices, _, _ = train_test_split(
+    train_indices, _, _, _ = train_test_split(
         np.arange(len(train_dataset)),
         all_labels,
-        test_size=0.1,
+        test_size=TEST_SIZE,
         stratify=all_labels,
         random_state=SEED
     )
 
     train_dataset_subset = Subset(train_dataset, train_indices)
-    test_dataset = Subset(eval_dataset, test_indices)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True,
-                             num_workers=multiprocessing.cpu_count(), pin_memory=device.type == "cuda")
 
     # Train the model
     model = ViT()
-    model.to(device=device)
     model.fit(train_dataset_subset)
 
 
 def eval_vit() -> None:
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
+
     # Config
     SEED = int(os.getenv("SEED", 123))
+    TEST_SIZE = 0.1
     torch.manual_seed(SEED)
-    device = torch.device("cuda")
 
     model = ViT()
-    model.to(device=device)
-
+    model.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
     eval_dataset = ViTImageDataset(type="eval")
 
     all_labels = eval_dataset.get_cls_labels()
     _, test_indices, _, _ = train_test_split(
         np.arange(len(eval_dataset)),
         all_labels,
-        test_size=0.1,
+        test_size=TEST_SIZE,
         stratify=all_labels,
         random_state=SEED
     )
@@ -76,7 +79,7 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
     Optimizes hyperparameters for the ViT model using Optuna.
 
     This function performs a hyperparameter search to find the optimal
-    parameters for the ViTTrainer.
+    parameters for the ViTTrainer. Results of the study can be found in /logs.
 
     Args:
         trial_count (int, optional): The number of optimization trials to run.
@@ -86,6 +89,11 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
         dict[str, float | int]: A dictionary containing the best hyperparameters
                                 found by Optuna.
     """
+
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+
     def objective(trial: optuna.Trial) -> float:
         """
         Objective function for Optuna to minimize.
@@ -120,7 +128,7 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
 
     logger = logging.getLogger("HyperparameterOptimizer")
     study_df = study.trials_dataframe()
-    study_df.to_csv("/logs/STUDY_NAME.csv", index=False)
+    study_df.to_csv(f"/logs/{STUDY_NAME}.csv", index=False)
     logger.info(study.best_params)
 
     return study.best_params

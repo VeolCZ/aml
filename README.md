@@ -46,6 +46,7 @@ To disable GPU support (and therefore avoid related issues) simply delete `docke
 ├── API-docs.md # Docs for the API \
 ├── build.sh # Build script for Docker \
 ├── docker-compose.yaml # Docker orchestration config \
+├── docker-compose.override.yaml # GPU support for Docker \
 ├── Dockerfile # Definition of Docker image \
 ├── .env # Project wide settings \
 ├── .env-example # Example for .env \
