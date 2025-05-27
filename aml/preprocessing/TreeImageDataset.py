@@ -28,7 +28,7 @@ class TreeImageDataset(Dataset):
         Raises:
             RuntimeError: Invalid dataset type.
         """
-        self._labels = pd.read_csv("/data/labels.csv", dtype=d_type, usecols=use_cols).iloc[:540]
+        self._labels = pd.read_csv("/data/labels.csv", dtype=d_type, usecols=use_cols)  # .iloc[:1050]
         if type == "eval":
             self._base_transform = TreePrerocessPipeline.get_base_eval_transform()
         elif type == "train":

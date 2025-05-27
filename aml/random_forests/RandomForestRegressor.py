@@ -15,7 +15,8 @@ class RandomForestRegressorModel(RandomForest):
 
     def __init__(self) -> None:
         super().__init__(RandomForestRegressor(n_jobs=-1,
-                                               random_state=123, n_estimators=1_000))  # ADD SEED
+                                               random_state=123, n_estimators=500, min_samples_split=2,
+                                               min_samples_leaf=4, max_depth=40, verbose=2))  # ADD SEED
 
     def fit(self, train_dataset: Dataset) -> None:
         """

@@ -104,20 +104,30 @@ class ViT(torch.nn.Module, ModelInterface):
                              learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
         trainer.train(model_path=model_path, save=True)
 
-    def predict(self, data: torch.Tensor, device: str = "cpu") -> tuple[torch.Tensor, torch.Tensor]:
+    @torch.inference_mode()
+    def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        batch_size = 320
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(device=device)
-        data = data.to(device=device)
-
         self.eval()
-        bbox: torch.Tensor
-        cls: torch.Tensor
-        with torch.no_grad():
-            bbox, cls = self(data)
 
-        bbox = bbox.to(device="cpu")
-        cls = torch.nn.functional.softmax(cls, dim=-1)
-        cls = cls.to(device="cpu")
-        return bbox, cls
+        all_bbox = []
+        all_cls = []
+        num_batches = (data.shape[0] + batch_size - 1) // batch_size
+
+        for i in range(num_batches):
+            start_idx = i * batch_size
+            end_idx = min((i + 1) * batch_size, data.shape[0])
+            batch_data = data[start_idx:end_idx].to(device=device)
+            bbox_batch, cls_batch = self(batch_data)
+
+            all_bbox.append(bbox_batch)
+            all_cls.append(torch.nn.functional.softmax(cls_batch, dim=-1))
+
+        final_bbox = torch.cat(all_bbox, dim=0).to("cpu")
+        final_cls = torch.cat(all_cls, dim=0).to("cpu")
+
+        return final_bbox, final_cls
 
     def load(self, path: str) -> None:
         self.load_state_dict(torch.load(path))
