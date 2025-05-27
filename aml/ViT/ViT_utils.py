@@ -111,6 +111,16 @@ def eval_vit() -> None:
     num_classes = eval_res.num_classes
     image = plot_confusion_matrix(confusion_matrix.cpu().numpy(), num_classes)
 
+    writer = write_summary(run_name="aml/runs/random_forest_thing")
+    write_summary().add_scalar("ViT/Accuracy", eval_res["accuracy"], 0)
+    write_summary().add_scalar("ViT/F1", eval_res["f1_score"], 0)
+    write_summary().add_scalar("ViT/top_k", eval_res["top_k"], 0)
+    write_summary().add_scalar("ViT/multiroc", eval_res["multiroc"], 0)
+    write_summary().add_image("ViT/Confusion Matrix", image, 0)
+    write_summary().add_scalar("ViT/IOU", eval_res["iou"], 0)
+    # add training plot here
+    writer.close()
+
     print(eval_res)
 
 

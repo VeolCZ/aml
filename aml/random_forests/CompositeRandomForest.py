@@ -21,7 +21,7 @@ class CompositeRandomForest(ModelInterface):
 
     def fit(self, train_dataset: Dataset) -> None:
         """
-        Trains both randomforests
+        Trains both random forests
         Args:
             train_dataset(Dataset): the dataset the forest needs to be trained on.
         """
@@ -30,7 +30,7 @@ class CompositeRandomForest(ModelInterface):
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Makes a prediction from both randomforests(prbability distribution of classes)
+        Makes a prediction from both random forests (prbability distribution of classes)
         Args:
             data(torch:Tensor): image in the form of a tensor.
         Returns:
@@ -43,7 +43,7 @@ class CompositeRandomForest(ModelInterface):
 
     def save_model(self, path: str) -> None:
         """
-        Saves both randomforests
+        Saves both random forests
         Args:
             path(str): the path to the directory where the forests need to be saved.
         """
@@ -54,7 +54,7 @@ class CompositeRandomForest(ModelInterface):
 
     def load(self, path: str) -> None:
         """
-        loads both randomforests
+        loads both random forests
         Args:
             path(str): The path to the directory where the forests are saved.
         """
