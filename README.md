@@ -14,7 +14,7 @@
 #### 1. Configure Environment
 
 ```bash
-cp .env.example .env # copy and edit the environment file
+cp .env-example .env # copy and edit the environment file
 ```
 
 ### Usage
