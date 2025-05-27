@@ -30,7 +30,6 @@ def help_func() -> None:
     print("Available commands:")
     for arg, (_, desc) in command_map.items():
         print(f"  {arg}: {desc}")
-    print("\nYou can combine multiple commands which will be executed in order, e.g.: --parse --goodbye")
 
 
 command_map = {
@@ -47,7 +46,7 @@ command_map = {
 
 
 def main() -> None:
-    if len(sys.argv) < 2 or all(arg not in command_map for arg in sys.argv[1:]):
+    if len(sys.argv) != 2 or all(arg not in command_map for arg in sys.argv[1:]):
         help_func()
     else:
         executed_commands = set()

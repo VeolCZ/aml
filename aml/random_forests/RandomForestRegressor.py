@@ -10,6 +10,7 @@ from torch.utils.data import Dataset, DataLoader
 SEED = int(os.getenv("SEED", 123))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
 
+
 class RandomForestRegressorModel(RandomForest):
     """
     Random Forest model for classification tasks.
@@ -18,7 +19,7 @@ class RandomForestRegressorModel(RandomForest):
 
     def __init__(self) -> None:
         super().__init__(RandomForestRegressor(n_jobs=-1,
-                                               random_state=SEED n_estimators=500, min_samples_split=2,
+                                               random_state=SEED, n_estimators=500, min_samples_split=2,
                                                min_samples_leaf=4, max_depth=40, verbose=2))
 
     def fit(self, train_dataset: Dataset) -> None:
