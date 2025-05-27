@@ -13,14 +13,10 @@
 
 ### Pull latest changes
 ```bash
-<<<<<<< HEAD
-cp .env-example .env # copy and edit the environment file
-=======
 git checkout main
 git pull
 git lfs fetch --all
 git lfs pull
->>>>>>> origin/idiot_proof
 ```
 
 ### Build the container
