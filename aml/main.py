@@ -1,5 +1,9 @@
 import logging
+import os
+import random
 import sys
+import numpy as np
+import torch
 from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit
 from make_visualisations import make_visualization
 from make_labels import make_labels
@@ -13,6 +17,13 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(module)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+
+SEED = int(os.getenv("SEED", 123))
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
 
 
 def help_func() -> None:

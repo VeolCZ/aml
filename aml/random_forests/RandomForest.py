@@ -31,4 +31,3 @@ class RandomForest(ModelInterface):
             path (str): The path to load the model from.
         """
         self.model = joblib.load(path)
-        print(f"Model loaded from {path}")

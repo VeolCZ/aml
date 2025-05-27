@@ -2,9 +2,13 @@ import multiprocessing
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 import torch
+import os
 from random_forests.RandomForest import RandomForest
 from torch.utils.data import Dataset, DataLoader
 from joblib import parallel_backend
+
+SEED = int(os.getenv("SEED", 123))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
 
 
 class RandomForestClassifierModel(RandomForest):
@@ -15,8 +19,8 @@ class RandomForestClassifierModel(RandomForest):
 
     def __init__(self) -> None:
         super().__init__(RandomForestClassifier(n_jobs=-1,
-                                                random_state=123, n_estimators=500, min_samples_split=2,
-                                                min_samples_leaf=4, max_depth=50, verbose=2))  # ADD SEED
+                                                random_state=SEED, n_estimators=500, min_samples_split=2,
+                                                min_samples_leaf=4, max_depth=50, verbose=2))
 
     def fit(self, train_dataset: Dataset) -> None:
         """
@@ -27,7 +31,7 @@ class RandomForestClassifierModel(RandomForest):
         x_train, y_train = [], []
         dataloader = DataLoader(
             train_dataset,
-            batch_size=320,
+            batch_size=BATCH_SIZE,
             shuffle=True,
             num_workers=multiprocessing.cpu_count(),
         )

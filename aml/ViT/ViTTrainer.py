@@ -11,6 +11,9 @@ from sklearn.model_selection import RepeatedKFold
 from torch.utils.data import DataLoader, Subset
 from preprocessing.ViTImageDataset import LabelType, ViTImageDataset
 
+SEED = int(os.getenv("SEED", 123))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
+
 
 class ViTTrainer:
     """
@@ -23,7 +26,7 @@ class ViTTrainer:
     """
 
     def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, learning_rate: float = 0.001,
-                 n_splits: int = 5, epochs: int = 5, batch_size: int = 32, patience: int = 2,
+                 n_splits: int = 5, epochs: int = 5, batch_size: int = BATCH_SIZE, patience: int = 2,
                  annealing_rate: float = 0.000001) -> None:
         """
         Initializes the ViTTrainer.
@@ -51,10 +54,8 @@ class ViTTrainer:
         self.batch_size = batch_size
         self.epochs = epochs
         self._logger = logging.getLogger(self.__class__.__name__)
-        self.SEED = int(os.getenv("SEED", 123))
         self.patience = patience
         self.annealing_rate = annealing_rate
-        torch.manual_seed(self.SEED)
 
     def get_loaders(self) -> Generator[tuple[DataLoader, DataLoader], None, None]:
         """
@@ -72,7 +73,7 @@ class ViTTrainer:
         NOTE: For optimal performance set epochs to be fully divisable by n_splits
         """
         kfold = RepeatedKFold(n_splits=self.n_splits, n_repeats=math.ceil(self.epochs/self.n_splits),
-                              random_state=self.SEED)
+                              random_state=SEED)
 
         for train_idx, val_idx in kfold.split(self.dataset):
             train_subset = Subset(self.dataset, train_idx)
