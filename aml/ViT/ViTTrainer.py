@@ -19,7 +19,7 @@ class ViTTrainer:
     cross-validation and early stopping.
 
     Assumes the ViT model has separate heads for bounding box prediction
-    (`bbox_head`) and classification (`cls_head`).
+    (bbox_head) and classification (cls_head).
     """
 
     def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, learning_rate: float = 0.001,
@@ -54,7 +54,6 @@ class ViTTrainer:
         self.SEED = int(os.getenv("SEED", 123))
         self.patience = patience
         self.annealing_rate = annealing_rate
-        torch.manual_seed(self.SEED)
 
     def get_loaders(self) -> Generator[tuple[DataLoader, DataLoader], None, None]:
         """
@@ -62,8 +61,8 @@ class ViTTrainer:
         of Repeated K-Fold cross-validation.
 
         The number of repeats is calculated such that there are at least
-        'epochs' total splits generated. The main training loop in `train`
-        will consume exactly `epochs` splits from this generator.
+        'epochs' total splits generated. The main training loop in train
+        will consume exactly epochs splits from this generator.
 
         Yields:
             Generator[Tuple[DataLoader, DataLoader], None, None]: A generator
@@ -84,7 +83,7 @@ class ViTTrainer:
 
             yield train_loader, val_loader
 
-    def train(self, model_path: str = "/logs/model", save: bool = False) -> float:
+    def train(self, model_path: str = "/weights/model", save: bool = False) -> float:
         """
         Trains the ViT model using the configured K-Fold cross-validation setup
         and early stopping.
@@ -94,7 +93,7 @@ class ViTTrainer:
 
         Args:
             model_path (str, optional): The base path to save the best model checkpoint.
-                                        Defaults to "/logs/model".
+                                        Defaults to "/weights/model".
             save (bool, optional): Whether to save the best model checkpoint. Defaults to False.
 
         Returns:

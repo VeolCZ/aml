@@ -55,11 +55,16 @@ def parse_labels(base_path: str) -> pd.DataFrame:
 
 
 def make_labels() -> None:
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+
     df = parse_labels("/data/CUB_200_2011")
     df.to_csv("/data/labels.csv", index=False)
 
 
 def get_classes() -> dict[int, str]:
+    assert os.path.exists("/data/CUB_200_2011/classes.txt"), "Please ensure the dataset is properly \
+         extracted into /data"
+
     df = pd.read_csv("/data/CUB_200_2011/classes.txt", sep=" ", header=None, names=["id", "class"])
     df = df["class"].apply(lambda x: x.split(".")[1].replace("_", " "))
     images: dict[int, str] = df.to_dict()

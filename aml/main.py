@@ -3,11 +3,8 @@ import sys
 from api.api import serve
 from make_labels import make_labels
 from make_visualisations import make_visualization
-from random_forests.forest_train_util import (
-    train_classifier_forest,
-    train_composite_forest,
-    train_regressor_forest,
-)
+
+from random_forests.forest_train_util import train_composite_forest
 from ViT.ViT_utils import optimize_hyperparameters, train_vit
 from streamlit_app.run_app import run_streamlit
 
@@ -25,7 +22,7 @@ def help_func() -> None:
     for arg, (_, desc) in command_map.items():
         print(f"  {arg}: {desc}")
     print(
-        "\nYou can combine multiple commands which will be executed in order, e.g.: --parse --goodbye"
+        "\nYou can combine multiple commands which will be executed in order, e.g.: --make_labels --serve"
     )
 
 
@@ -33,14 +30,12 @@ command_map = {
     "--help": (help_func, "Shows this help message"),
     "--make_labels": (make_labels, "Creates a labels.csv file in /data"),
     "--make_visualization": (make_visualization, "Create visualizations of /data"),
-    "--train_vit": (train_vit, "Train ViT and save the model to /data"),
     "--optimize_hyperparams": (
         optimize_hyperparameters,
         "Optimize hyperparameters for ViT",
     ),
-    "--forest_regressor": (train_regressor_forest, "Train random forest regressor"),
-    "--forest_classifier": (train_classifier_forest, "Train random forest classifier"),
-    "--train_forest": (train_composite_forest, "TODO"),
+    "--train_vit": (train_vit, "Trains the ViT model"),
+    "--train_forest": (train_composite_forest, "Trains the Forest model"),
     "--serve": (serve, "Serve the models through API"),
     "--run_streamlit": (run_streamlit, "Run the streamlit application"),
 }

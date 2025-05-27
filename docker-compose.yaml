@@ -5,7 +5,6 @@ services:
       - "8080:8080"
     container_name: "aml"
     command: python3 main.py
-    shm_size: "20g"
     build:
       context: .
       dockerfile: Dockerfile
