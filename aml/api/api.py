@@ -161,7 +161,6 @@ class ViTAPI(ls.LitAPI):
 def serve() -> None:
     """Starts the LitServe API server."""
 
-    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
