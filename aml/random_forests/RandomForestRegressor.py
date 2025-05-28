@@ -19,7 +19,7 @@ class RandomForestRegressorModel(RandomForest):
 
     def __init__(self) -> None:
         super().__init__(RandomForestRegressor(n_jobs=-1,
-                                               random_state=SEED, n_estimators=50, min_samples_split=2,
+                                               random_state=SEED, n_estimators=200, min_samples_split=2,
                                                min_samples_leaf=4, max_depth=40, verbose=2, max_features="sqrt"))
 
     def fit(self, train_dataset: Dataset) -> None:

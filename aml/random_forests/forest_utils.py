@@ -19,7 +19,7 @@ def train_composite() -> None:
     Trains a composite Randomforest based on a predetermined dataset.
     """
     model = CompositeRandomForest()
-    train_dataset = TreeImageDataset(type="train")
+    train_dataset = TreeImageDataset(type="eval")
 
     all_labels = train_dataset.get_cls_labels()
     train_indices, _, _, _ = train_test_split(

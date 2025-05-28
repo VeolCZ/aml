@@ -19,6 +19,7 @@ class EvalMetric:
     best_classes: torch.Tensor
     worst_classes: torch.Tensor
     iou: float
+    random_iou: float
 
 
 class Evaluator:
@@ -42,7 +43,8 @@ class Evaluator:
             true_label (torch.Tensor): The true bounding boxes.
         returns: The IoU score.
         """
-        return float(torchvision.ops.complete_box_iou_loss(bbox, true_label, reduction="mean").item())
+        diagonal = torch.diag(torchvision.ops.box_iou(bbox, true_label))
+        return float(diagonal.mean(-1).item())
 
     @staticmethod
     def get_top_k(clas: torch.Tensor, true_label_indices: torch.Tensor, k: int) -> float:
@@ -119,6 +121,18 @@ class Evaluator:
         return best, worst
 
     @staticmethod
+    def random_IOU(true_label: torch.Tensor) -> float:
+        """
+        Calculate the Intersection over Union (IoU) for the model predictions.
+        args:
+            bbox (torch.Tensor): The predicted bounding boxes.
+            true_label (torch.Tensor): The true bounding boxes.
+        returns: The IoU score.
+        """
+        mean_bbox = true_label.mean(0).repeat((true_label.shape[0], 1))
+        return float(torchvision.ops.box_iou(mean_bbox, true_label).mean(-1).mean(-1).item())
+
+    @staticmethod
     def eval(model: ModelInterface, input_data: torch.Tensor,
              clas_label: torch.Tensor, bbox_label: torch.Tensor
              ) -> EvalMetric:
@@ -143,6 +157,8 @@ class Evaluator:
         best, worst = Evaluator.best_and_worst(clas, true_label_indices, clas.shape[1], k=3)
 
         iou = Evaluator.get_IOU(bbox, bbox_label)
+        random_iou = Evaluator.random_IOU(bbox_label)
+
         eval_results = EvalMetric(
             accuracy=acc,
             top_3=top_3,
@@ -153,6 +169,7 @@ class Evaluator:
             num_classes=clas.shape[0],
             best_classes=best,
             worst_classes=worst,
-            iou=iou
+            iou=iou,
+            random_iou=random_iou
         )
         return eval_results
