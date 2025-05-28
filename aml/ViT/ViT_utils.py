@@ -31,11 +31,6 @@ def train_vit() -> None:
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
 
-    # Config
-    SEED = int(os.getenv("SEED", "123"))
-    TEST_SIZE = 0.1
-    torch.manual_seed(SEED)
-
     # Datasets
     train_dataset = ViTImageDataset(type="train")
 
@@ -61,11 +56,6 @@ def eval_vit() -> None:
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
     assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
-
-    # Config
-    SEED = int(os.getenv("SEED", "123"))
-    TEST_SIZE = 0.1
-    torch.manual_seed(SEED)
 
     model = ViT()
     model.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
