@@ -3,7 +3,6 @@ import sys
 from api.api import serve
 from make_labels import make_labels
 from make_visualisations import make_visualization
-
 from random_forests.forest_train_util import train_composite_forest
 from ViT.ViT_utils import optimize_hyperparameters, train_vit
 from streamlit_app.run_app import run_streamlit
@@ -21,19 +20,14 @@ def help_func() -> None:
     print("Available commands:")
     for arg, (_, desc) in command_map.items():
         print(f"  {arg}: {desc}")
-    print(
-        "\nYou can combine multiple commands which will be executed in order, e.g.: --make_labels --serve"
-    )
+    print("\nYou can combine multiple commands which will be executed in order, e.g.: --make_labels --serve")
 
 
 command_map = {
     "--help": (help_func, "Shows this help message"),
     "--make_labels": (make_labels, "Creates a labels.csv file in /data"),
     "--make_visualization": (make_visualization, "Create visualizations of /data"),
-    "--optimize_hyperparams": (
-        optimize_hyperparameters,
-        "Optimize hyperparameters for ViT",
-    ),
+    "--optimize_hyperparams": (optimize_hyperparameters, "Optimize hyperparameters for ViT"),
     "--train_vit": (train_vit, "Trains the ViT model"),
     "--train_forest": (train_composite_forest, "Trains the Forest model"),
     "--serve": (serve, "Serve the models through API"),
