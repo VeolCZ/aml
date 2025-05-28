@@ -1,7 +1,5 @@
 import os
 import albumentations as A
-import numpy as np
-import random
 import torch
 import cv2
 from numpy.typing import NDArray
@@ -28,10 +26,6 @@ class TreePrerocessPipeline:
         Returns:
             A.Compose: The training transformation pipeline.
         """
-        torch.manual_seed(SEED)
-        random.seed(SEED)
-        np.random.seed(SEED)
-
         train_transforms: list[Union[A.BasicTransform, A.Affine, A.BaseCompose]] = [
             A.RandomResizedCrop(scale=(0.8, 1.0), p=1.0, size=(
                 TreePrerocessPipeline.img_size, TreePrerocessPipeline.img_size)),
@@ -71,10 +65,6 @@ class TreePrerocessPipeline:
         Returns:
             A.Compose: The evaluation transformation pipeline.
         """
-        torch.manual_seed(SEED)
-        random.seed(SEED)
-        np.random.seed(SEED)
-
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
             A.Resize(height=256, width=256),
             A.CenterCrop(height=TreePrerocessPipeline.img_size, width=TreePrerocessPipeline.img_size),

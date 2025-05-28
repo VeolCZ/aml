@@ -31,6 +31,7 @@ def help_func() -> None:
     print("Available commands:")
     for arg, (_, desc) in command_map.items():
         print(f"  {arg}: {desc}")
+    print("Example usage: bash run.sh --streamlit")
 
 
 command_map = {
