@@ -22,9 +22,18 @@ class ViTTrainer:
     (bbox_head) and classification (cls_head).
     """
 
-    def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, learning_rate: float = 0.001,
-                 n_splits: int = 5, epochs: int = 5, batch_size: int = 32, patience: int = 2,
-                 annealing_rate: float = 0.000001) -> None:
+    def __init__(
+        self,
+        model: ViT,
+        device: torch.device,
+        dataset: ViTImageDataset,
+        learning_rate: float = 0.001,
+        n_splits: int = 5,
+        epochs: int = 5,
+        batch_size: int = 32,
+        patience: int = 2,
+        annealing_rate: float = 0.000001,
+    ) -> None:
         """
         Initializes the ViTTrainer.
 
@@ -70,16 +79,29 @@ class ViTTrainer:
 
         NOTE: For optimal performance set epochs to be fully divisable by n_splits
         """
-        kfold = RepeatedKFold(n_splits=self.n_splits, n_repeats=math.ceil(self.epochs/self.n_splits),
-                              random_state=self.SEED)
+        kfold = RepeatedKFold(
+            n_splits=self.n_splits,
+            n_repeats=math.ceil(self.epochs / self.n_splits),
+            random_state=self.SEED,
+        )
 
         for train_idx, val_idx in kfold.split(self.dataset):
             train_subset = Subset(self.dataset, train_idx)
             val_subset = Subset(self.dataset, val_idx)
-            train_loader = DataLoader(train_subset, batch_size=self.batch_size, shuffle=True,
-                                      num_workers=multiprocessing.cpu_count(), pin_memory=self.device.type == "cuda")
-            val_loader = DataLoader(val_subset, batch_size=self.batch_size, shuffle=True,
-                                    num_workers=multiprocessing.cpu_count(), pin_memory=self.device.type == "cuda")
+            train_loader = DataLoader(
+                train_subset,
+                batch_size=self.batch_size,
+                shuffle=True,
+                num_workers=multiprocessing.cpu_count(),
+                pin_memory=self.device.type == "cuda",
+            )
+            val_loader = DataLoader(
+                val_subset,
+                batch_size=self.batch_size,
+                shuffle=True,
+                num_workers=multiprocessing.cpu_count(),
+                pin_memory=self.device.type == "cuda",
+            )
 
             yield train_loader, val_loader
 
@@ -104,11 +126,14 @@ class ViTTrainer:
                            completing the specified number of 'epochs' (splits).
         """
         optimizer = torch.optim.AdamW(
-            [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()],
-            lr=self.learning_rate)
+            [p for p in self.model.cls_head.parameters()]
+            + [p for p in self.model.bbox_head.parameters()],
+            lr=self.learning_rate,
+        )
 
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=self.epochs, eta_min=self.annealing_rate)
+            optimizer, T_max=self.epochs, eta_min=self.annealing_rate
+        )
 
         bbox_criterion = torchvision.ops.complete_box_iou_loss
         cls_criterion = torch.nn.CrossEntropyLoss()
@@ -122,7 +147,8 @@ class ViTTrainer:
             train_loader, val_loader = next(loader_generator)
 
             bbox_loss, cls_los, val_bbox_loss, val_cls_loss = self.train_epoch(
-                optimizer, bbox_criterion, cls_criterion, train_loader, val_loader)
+                optimizer, bbox_criterion, cls_criterion, train_loader, val_loader
+            )
             scheduler.step()
 
             val_loss = float((val_bbox_loss + val_cls_loss).item())
@@ -134,30 +160,37 @@ class ViTTrainer:
                 current_patience += 1
 
             self._logger.info(
-                f"Epoch {epoch + 1}/{self.epochs} - " +
-                f"Train bbox loss: {bbox_loss.item():.4f} " +
-                f"Train cls loss: {cls_los.item():.4f} " +
-                f"Val bbox loss: {val_bbox_loss.item():.4f} " +
-                f"Val cls loss: {val_cls_loss.item():.4f} " +
-                f"Best loss: {best_val_loss:.4f}"
+                f"Epoch {epoch + 1}/{self.epochs} - "
+                + f"Train bbox loss: {bbox_loss.item():.4f} "
+                + f"Train cls loss: {cls_los.item():.4f} "
+                + f"Val bbox loss: {val_bbox_loss.item():.4f} "
+                + f"Val cls loss: {val_cls_loss.item():.4f} "
+                + f"Best loss: {best_val_loss:.4f}"
             )
 
             if current_patience == self.patience:
                 self._logger.info(
-                    f"Early stopping at epoch {epoch + 1} with patience {self.patience}")
+                    f"Early stopping at epoch {epoch + 1} with patience {self.patience}"
+                )
                 break
 
         if best_model:
             self.model.load_state_dict(best_model)
         if save:
-            torch.save(best_model, model_path +
-                       f"ValLoss_{round(best_val_loss, 3)}" + ".pth")
+            torch.save(
+                best_model, model_path + f"ValLoss_{round(best_val_loss, 3)}" + ".pth"
+            )
 
         return best_val_loss
 
-    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.complete_box_iou_loss,
-                    cls_criterion: torch.nn.CrossEntropyLoss,  train_loader: DataLoader,
-                    val_loader: DataLoader) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    def train_epoch(
+        self,
+        optimizer: torch.optim.AdamW,
+        bbox_criterion: torchvision.ops.complete_box_iou_loss,
+        cls_criterion: torch.nn.CrossEntropyLoss,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Trains and validates the model for one K-Fold split (equivalent to one
         epoch in the main training loop).
@@ -205,8 +238,9 @@ class ViTTrainer:
                 input_cls = torch.argmax(labels["cls"], dim=1).to(self.device)
                 images = images.to(self.device)
                 val_bbox, val_cls = self.model(images)
-                val_bbox_loss: torch.Tensor = bbox_criterion(val_bbox, input_bbox, reduction="mean")
-                val_cls_loss: torch.Tensor = cls_criterion(
-                    val_cls, input_cls)
+                val_bbox_loss: torch.Tensor = bbox_criterion(
+                    val_bbox, input_bbox, reduction="mean"
+                )
+                val_cls_loss: torch.Tensor = cls_criterion(val_cls, input_cls)
 
         return bbox_loss, cls_loss, val_bbox_loss, val_cls_loss

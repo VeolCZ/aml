@@ -18,10 +18,14 @@ def train_vit() -> None:
     Global variables:
         device (torch.device): The device (CPU or CUDA) on which to perform computations.
     """
-    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists(
+        "/data/CUB_200_2011"
+    ), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
-    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+    assert os.path.exists(
+        "/data/labels.csv"
+    ), "Please ensure the labels are generated (--make_labels)"
 
     # Config
     SEED = int(os.getenv("SEED", 123))
@@ -37,7 +41,7 @@ def train_vit() -> None:
         all_labels,
         test_size=TEST_SIZE,
         stratify=all_labels,
-        random_state=SEED
+        random_state=SEED,
     )
 
     train_dataset_subset = Subset(train_dataset, train_indices)
@@ -48,11 +52,17 @@ def train_vit() -> None:
 
 
 def eval_vit() -> None:
-    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists(
+        "/data/CUB_200_2011"
+    ), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
-    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
-    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
+    assert os.path.exists(
+        "/data/labels.csv"
+    ), "Please ensure the labels are generated (--make_labels)"
+    assert os.path.exists(
+        "/weights/ViT_2025-05-16_ValLoss_1.84.pth"
+    ), "Please ensure that you have the latest weights"
 
     # Config
     SEED = int(os.getenv("SEED", 123))
@@ -69,7 +79,7 @@ def eval_vit() -> None:
         all_labels,
         test_size=TEST_SIZE,
         stratify=all_labels,
-        random_state=SEED
+        random_state=SEED,
     )
     _test_dataset = Subset(eval_dataset, test_indices)
 
@@ -90,9 +100,13 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
                                 found by Optuna.
     """
 
-    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists(
+        "/data/CUB_200_2011"
+    ), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
-    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+    assert os.path.exists(
+        "/data/labels.csv"
+    ), "Please ensure the labels are generated (--make_labels)"
 
     def objective(trial: optuna.Trial) -> float:
         """
@@ -110,21 +124,40 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
 
         number_of_folds = trial.suggest_int("n_of_folds", 8, 20, step=2)
         learning_rate = trial.suggest_float("learning_rate", 1e-5, 1, log=True)
-        annealing_rate = trial.suggest_float("annealing_rate", 1e-8, learning_rate, log=True)
+        annealing_rate = trial.suggest_float(
+            "annealing_rate", 1e-8, learning_rate, log=True
+        )
 
         model = ViT()
-        trainer = ViTTrainer(model, device=device, dataset=ViTImageDataset(type="train"),
-                             learning_rate=learning_rate, n_splits=number_of_folds, epochs=20, batch_size=150,
-                             patience=3, annealing_rate=annealing_rate)
+        trainer = ViTTrainer(
+            model,
+            device=device,
+            dataset=ViTImageDataset(type="train"),
+            learning_rate=learning_rate,
+            n_splits=number_of_folds,
+            epochs=20,
+            batch_size=150,
+            patience=3,
+            annealing_rate=annealing_rate,
+        )
         return float(trainer.train())
 
     STUDY_NAME = "vit_hyperparams"
     STORAGE_URL = f"sqlite:////logs/{STUDY_NAME}.db"
 
-    study = optuna.create_study(direction="minimize", load_if_exists=True, study_name=STUDY_NAME,
-                                storage=STORAGE_URL,)
-    study.optimize(objective, n_trials=trial_count,
-                   show_progress_bar=True, gc_after_trial=True, n_jobs=2)
+    study = optuna.create_study(
+        direction="minimize",
+        load_if_exists=True,
+        study_name=STUDY_NAME,
+        storage=STORAGE_URL,
+    )
+    study.optimize(
+        objective,
+        n_trials=trial_count,
+        show_progress_bar=True,
+        gc_after_trial=True,
+        n_jobs=2,
+    )
 
     logger = logging.getLogger("HyperparameterOptimizer")
     study_df = study.trials_dataframe()

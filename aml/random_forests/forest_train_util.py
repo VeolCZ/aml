@@ -11,9 +11,13 @@ TEST_SIZE = 0.1
 
 
 def train_composite_forest() -> None:
-    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists(
+        "/data/CUB_200_2011"
+    ), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
-    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+    assert os.path.exists(
+        "/data/labels.csv"
+    ), "Please ensure the labels are generated (--make_labels)"
 
     PATH = "/weights/forest"
     model = CompositeRandomForest()
@@ -26,7 +30,7 @@ def train_composite_forest() -> None:
         all_labels,
         test_size=TEST_SIZE,
         stratify=all_labels,
-        random_state=SEED
+        random_state=SEED,
     )
 
     train_dataset_subset = Subset(train_dataset, train_indices)

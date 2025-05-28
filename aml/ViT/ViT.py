@@ -7,7 +7,9 @@ from datetime import datetime
 
 
 class ViT(torch.nn.Module, ModelInterface):
-    def __init__(self, hidden_size: int = 1024, num_classes: int = 200, dp_rate: float = 0.1) -> None:
+    def __init__(
+        self, hidden_size: int = 1024, num_classes: int = 200, dp_rate: float = 0.1
+    ) -> None:
         """
         Initializes the ViT model with a pre-trained backbone and custom heads.
 
@@ -23,7 +25,8 @@ class ViT(torch.nn.Module, ModelInterface):
         backbone_out_size = 768
 
         self.backbone = ViTForImageClassification.from_pretrained(
-            "google/vit-base-patch16-224", cache_dir="/data/vit")
+            "google/vit-base-patch16-224", cache_dir="/data/vit"
+        )
         self.backbone.classifier = torch.nn.Identity()
 
         for param in self.backbone.parameters():
@@ -97,13 +100,22 @@ class ViT(torch.nn.Module, ModelInterface):
         epochs = 20
         patience = 4
 
-        self.to(device=device)
-        trainer = ViTTrainer(self, device, dataset,
-                             epochs=epochs, batch_size=batch_size, patience=patience,
-                             learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
+        trainer = ViTTrainer(
+            self,
+            device,
+            dataset,
+            epochs=epochs,
+            batch_size=batch_size,
+            patience=patience,
+            learning_rate=learning_rate,
+            n_splits=n_of_folds,
+            annealing_rate=annealing_rate,
+        )
         trainer.train(model_path=model_path, save=True)
 
-    def predict(self, data: torch.Tensor, device: str = "cpu") -> tuple[torch.Tensor, torch.Tensor]:
+    def predict(
+        self, data: torch.Tensor, device: str = "cpu"
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         self.to(device=device)
         data = data.to(device=device)
 
@@ -119,6 +131,4 @@ class ViT(torch.nn.Module, ModelInterface):
         return bbox, cls
 
     def load(self, path: str) -> None:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.to(device=device)
-        self.load_state_dict(torch.load(path, map_location=device))
+        self.load_state_dict(torch.load(path))

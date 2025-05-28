@@ -26,7 +26,10 @@ command_map = {
     "--help": (help_func, "Shows this help message"),
     "--make_labels": (make_labels, "Creates a labels.csv file in /data"),
     "--make_visualization": (make_visualization, "Create visualizations of /data"),
-    "--optimize_hyperparams": (optimize_hyperparameters, "Optimize hyperparameters for ViT"),
+    "--optimize_hyperparams": (
+        optimize_hyperparameters,
+        "Optimize hyperparameters for ViT",
+    ),
     "--train_vit": (train_vit, "Trains the ViT model"),
     "--train_forest": (train_composite_forest, "Trains the Forest model"),
     "--serve": (serve, "Serve the models through API"),
