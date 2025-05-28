@@ -1,0 +1,15 @@
+#TODO
+Thursday: ViT plots, matrix plots, all eval plots, wrap up tensorboard
+Friday: Grand Code Cleanup
+I think time disappeared  STILL NEED TO IMPLEMENT THIS
+plotting curves for ViT
+clean up the mess in the docstrings, typehints and print statements
+Add best and worse performing classes
+
+ALL OUTPUTS ON CPU WHEN IT COMES TO TENSORS
+
+No duplicate code line pls.
+
+Constants are in UPPER_CASE and should be centralized so that every function
+does not have magic number in it
+for more info check how SEED is done

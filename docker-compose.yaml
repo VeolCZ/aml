@@ -21,6 +21,7 @@ services:
     volumes:
       - ./aml:/aml
       - ./data:/data
+      - ./weights:/weights
       - ./logs:/logs
       - ./weights:/weights
     healthcheck:

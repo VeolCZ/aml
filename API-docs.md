@@ -29,7 +29,7 @@ Example Request Body:
 | Field         | Type           | Description                                                                                                 |
 | :------------ | :------------- | :---------------------------------------------------------------------------------------------------------- |
 | `species`     | `string`       | The predicted Bird species.                                                                                 |
-| `ounding_box` | `array<float>` | Predicted bounding box coordinates for the Bird [x\_min, y\_min, x\_max, y\_max] scaled to the [0-1] range. |
+| `bounding_box` | `array<float>` | Predicted bounding box coordinates for the Bird [x\_min, y\_min, x\_max, y\_max] scaled to the [0-1] range. |
 
 Example Successful Response (200 OK):
 

@@ -5,6 +5,9 @@ from transformers import ViTForImageClassification
 from interface.ModelInterface import ModelInterface
 from datetime import datetime
 
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class ViT(torch.nn.Module, ModelInterface):
     def __init__(self, hidden_size: int = 1024, num_classes: int = 200, dp_rate: float = 0.1) -> None:
@@ -86,10 +89,6 @@ class ViT(torch.nn.Module, ModelInterface):
     def fit(self, dataset: ViTImageDataset) -> None:
         from ViT.ViTTrainer import ViTTrainer  # Import as needed
 
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        SEED = int(os.getenv("SEED", 123))
-        torch.manual_seed(SEED)
-        batch_size = 350
         model_path = f"/data/ViT_{datetime.utcnow()}"
         learning_rate = 0.0012278101209126883
         annealing_rate = 6.1313110341652e-07
@@ -97,26 +96,33 @@ class ViT(torch.nn.Module, ModelInterface):
         epochs = 20
         patience = 4
 
-        self.to(device=device)
-        trainer = ViTTrainer(self, device, dataset,
-                             epochs=epochs, batch_size=batch_size, patience=patience,
+        trainer = ViTTrainer(self, DEVICE, dataset,
+                             epochs=epochs, batch_size=BATCH_SIZE, patience=patience,
                              learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
         trainer.train(model_path=model_path, save=True)
 
-    def predict(self, data: torch.Tensor, device: str = "cpu") -> tuple[torch.Tensor, torch.Tensor]:
-        self.to(device=device)
-        data = data.to(device=device)
-
+    @torch.inference_mode()
+    def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        self.to(device=DEVICE)
         self.eval()
-        bbox: torch.Tensor
-        cls: torch.Tensor
-        with torch.no_grad():
-            bbox, cls = self(data)
 
-        bbox = bbox.to(device="cpu")
-        cls = torch.nn.functional.softmax(cls, dim=-1)
-        cls = cls.to(device="cpu")
-        return bbox, cls
+        all_bbox = []
+        all_cls = []
+        num_batches = (data.shape[0] + BATCH_SIZE - 1) // BATCH_SIZE
+
+        for i in range(num_batches):
+            start_idx = i * BATCH_SIZE
+            end_idx = min((i + 1) * BATCH_SIZE, data.shape[0])
+            batch_data = data[start_idx:end_idx].to(device=DEVICE)
+            bbox_batch, cls_batch = self(batch_data)
+
+            all_bbox.append(bbox_batch)
+            all_cls.append(torch.nn.functional.softmax(cls_batch, dim=-1))
+
+        final_bbox = torch.cat(all_bbox, dim=0).to("cpu")
+        final_cls = torch.cat(all_cls, dim=0).to("cpu")
+
+        return final_bbox, final_cls
 
     def load(self, path: str) -> None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

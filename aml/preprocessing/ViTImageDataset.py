@@ -126,8 +126,7 @@ class ViTImageDataset(Dataset):
         except Exception as e:
             raise RuntimeError(
                 f"Error during embeddings generation at index {idx}: {e}")
-
-        return image_features.pixel_values[0], labels
+        return torch.tensor(image_features.pixel_values[0]), labels
 
     def get_cls_labels(self) -> list[int]:
         return [int(label) for label in self._labels["class_id"]]
