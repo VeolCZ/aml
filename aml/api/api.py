@@ -144,11 +144,12 @@ class ViTAPI(ls.LitAPI):
         Returns:
             dict[str, Any]: Contains "class_id" (int) and "bounding_box" (list of floats).
         """
-        input_tensor = data[0].to(self.device)
         if data[1] == ModelType.VIT:
+            input_tensor = data[0].to(self.device)
             bbox, cls = self.vit.predict(input_tensor)
             bbox = bbox / ViTPreprocessPipeline.img_size
         else:
+            input_tensor = data[0].cpu()
             bbox, cls = self.forest.predict(input_tensor)
             bbox = bbox / TreePrerocessPipeline.img_size
 
@@ -161,7 +162,6 @@ class ViTAPI(ls.LitAPI):
 def serve() -> None:
     """Starts the LitServe API server."""
 
-    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"

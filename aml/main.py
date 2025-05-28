@@ -8,7 +8,8 @@ from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit
 from make_visualisations import make_visualization
 from api.api import serve
 from make_labels import make_labels
-from random_forests.forest_utils import train_composite, eval_composite
+from random_forests.forest_utils import train_composite, eval_compositefrom streamlit_app.run_streamlit import run_streamlit
+
 
 logging.basicConfig(
     level="INFO",
@@ -29,7 +30,6 @@ def help_func() -> None:
     print("Available commands:")
     for arg, (_, desc) in command_map.items():
         print(f"  {arg}: {desc}")
-    print("\nYou can combine multiple commands which will be executed in order, e.g.: --make_labels --serve")
 
 
 command_map = {
@@ -42,6 +42,7 @@ command_map = {
     "--train_forest": (train_composite, "Train random forests"),
     "--eval_forest": (eval_composite, "Eval random forests"),
     "--serve": (serve, "Serve the models through API"),
+    "--streamlit": (run_streamlit, "Run the streamlit application"),
 }
 
 
