@@ -8,7 +8,8 @@ from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit
 from make_visualisations import make_visualization
 from api.api import serve
 from make_labels import make_labels
-from random_forests.forest_utils import train_composite, eval_compositefrom streamlit_app.run_streamlit import run_streamlit
+from random_forests.forest_utils import train_composite, eval_composite
+from streamlit_app.run_streamlit import run_streamlit
 
 
 logging.basicConfig(
