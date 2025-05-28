@@ -123,9 +123,8 @@ class Evaluator:
     @staticmethod
     def random_IOU(true_label: torch.Tensor) -> float:
         """
-        Calculate the Intersection over Union (IoU) for the model predictions.
+        Calculate the Intersection over Union (IoU) as if the model predicted mean bounding box.
         args:
-            bbox (torch.Tensor): The predicted bounding boxes.
             true_label (torch.Tensor): The true bounding boxes.
         returns: The IoU score.
         """

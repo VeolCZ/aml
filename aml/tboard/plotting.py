@@ -15,7 +15,7 @@ def plot_confusion_matrix(confusion_matrix: torch.Tensor) -> torch.Tensor:
     plt.tight_layout()
     plt.savefig("/logs/confusion_matrix.png")
     buf = io.BytesIO()
-    plt.savefig(buf, format='png')
+    plt.savefig(buf, format="png")
     buf.seek(0)
     plt.close(fig)
     image = Image.open(buf).convert("RGB")

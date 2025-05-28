@@ -6,7 +6,7 @@ from random_forests.CompositeRandomForest import CompositeRandomForest
 from evaluator.Evaluator import Evaluator
 from torch.utils.data import Subset
 from sklearn.model_selection import train_test_split
-from preprocessing.TreeImageDataset import TreeImageDataset
+from preprocessing.TreeImageDataset import TreeImageDataset, TreePrerocessPipeline
 from tboard.plotting import plot_confusion_matrix
 from tboard.summarywriter import write_summary
 
@@ -48,12 +48,11 @@ def eval_composite() -> None:
     model = CompositeRandomForest()
     model.load("/weights/forest")
 
-    train_dataset = TreeImageDataset(type="train")
     eval_dataset = TreeImageDataset(type="eval")
 
-    all_labels = train_dataset.get_cls_labels()
+    all_labels = eval_dataset.get_cls_labels()
     _, test_indices, _, _ = train_test_split(
-        np.arange(len(train_dataset)),
+        np.arange(len(eval_dataset)),
         all_labels,
         test_size=TEST_SIZE,
         stratify=all_labels,
@@ -67,7 +66,7 @@ def eval_composite() -> None:
 
     for img, label in iter(test_dataset):
         x_test.append(img)
-        one_hot_cls = torch.zeros((200), dtype=torch.float)
+        one_hot_cls = torch.zeros((TreePrerocessPipeline.img_size), dtype=torch.float)
         one_hot_cls[label["cls"]] = 1.0
         y_test.append(one_hot_cls)
         z_test.append(label["bbox"])
