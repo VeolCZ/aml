@@ -22,5 +22,5 @@ class RandomForestClassifierModel(RandomForest):
         self.model.fit(x_train, y_train)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        cls = self.model.predict(data)
+        cls = self.model.predict_proba(data)
         return torch.empty((1)), torch.tensor(cls)
