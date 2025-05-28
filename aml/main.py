@@ -6,9 +6,8 @@ import numpy as np
 import torch
 from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit
 from make_visualisations import make_visualization
-from make_labels import make_labels
-from random_forests.forest_utils import eval_composite, train_composite
-from api.api import serve
+from random_forests.forest_train_util import train_composite_forest
+from ViT.ViT_utils import optimize_hyperparameters, train_vit
 
 
 logging.basicConfig(
@@ -30,6 +29,7 @@ def help_func() -> None:
     print("Available commands:")
     for arg, (_, desc) in command_map.items():
         print(f"  {arg}: {desc}")
+    print("\nYou can combine multiple commands which will be executed in order, e.g.: --make_labels --serve")
 
 
 command_map = {
@@ -39,6 +39,8 @@ command_map = {
     "--train_vit": (train_vit, "Train ViT and save the model to /data"),
     "--eval_vit": (eval_vit, "Eval ViT"),
     "--optimize_hyperparams": (optimize_hyperparameters, "Optimize hyperparameters for ViT"),
+    "--train_vit": (train_vit, "Trains the ViT model"),
+    "--train_forest": (train_composite_forest, "Trains the Forest model"),
     "--train_forest": (train_composite, "Train random forests"),
     "--eval_forest": (eval_composite, "Eval random forests"),
     "--serve": (serve, "Serve the models through API"),

@@ -1,4 +1,5 @@
 from enum import Enum
+import os
 from fastapi import HTTPException, status
 from PIL import Image, UnidentifiedImageError
 from make_labels import get_classes
@@ -65,7 +66,7 @@ class ViTAPI(ls.LitAPI):
         """
         self.device = device
         self.vit = ViT()
-        self.vit.load("weights/ViT_2025-05-16-12-28.294240ValLoss_1.84.pth")
+        self.vit.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
         self.forest = CompositeRandomForest()
         self.forest.load("/weights/forest")
         self.vit_preprocess = ViTPreprocessPipeline.vit_predict_transform
@@ -159,5 +160,14 @@ class ViTAPI(ls.LitAPI):
 
 def serve() -> None:
     """Starts the LitServe API server."""
+
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
+    assert os.path.exists("/weights/forest/classifier.pkl"), "Please ensure that you have the latest weights"
+    assert os.path.exists("/weights/forest/regressor.pkl"), "Please ensure that you have the latest weights"
+
     server = ls.LitServer(ViTAPI(max_batch_size=1), accelerator="auto")
     server.run(port=8000, host="0.0.0.0")

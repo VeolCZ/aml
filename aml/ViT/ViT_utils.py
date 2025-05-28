@@ -26,6 +26,15 @@ def train_vit() -> None:
     Global variables:
         device (torch.device): The device (CPU or CUDA) on which to perform computations.
     """
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+
+    # Config
+    SEED = int(os.getenv("SEED", 123))
+    TEST_SIZE = 0.1
+    torch.manual_seed(SEED)
 
     # Datasets
     train_dataset = ViTImageDataset(type="train")
@@ -47,19 +56,19 @@ def train_vit() -> None:
 
 
 def eval_vit() -> None:
-    """
-    Evaluates the ViT on several metrics including:
-        Accuracy
-        top 5 accuracy
-        F1 score
-        Multiroc
-        Confusion matrix
-    It prints these evaluations in the terminal.
-    """
-    model = ViT()
-    model.load("/weights/ViT_2025-05-16-12-28.294240ValLoss_1.84.pth")
-    model.to(device=DEVICE)
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
 
+    # Config
+    SEED = int(os.getenv("SEED", 123))
+    TEST_SIZE = 0.1
+    torch.manual_seed(SEED)
+
+    model = ViT()
+    model.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
     eval_dataset = ViTImageDataset(type="eval")
 
     all_labels = eval_dataset.get_cls_labels()
@@ -117,7 +126,7 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
     Optimizes hyperparameters for the ViT model using Optuna.
 
     This function performs a hyperparameter search to find the optimal
-    parameters for the ViTTrainer.
+    parameters for the ViTTrainer. Results of the study can be found in /logs.
 
     Args:
         trial_count (int, optional): The number of optimization trials to run.
@@ -127,6 +136,11 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
         dict[str, float | int]: A dictionary containing the best hyperparameters
                                 found by Optuna.
     """
+
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+
     def objective(trial: optuna.Trial) -> float:
         """
         Objective function for Optuna to minimize.
@@ -160,7 +174,7 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
 
     logger = logging.getLogger("HyperparameterOptimizer")
     study_df = study.trials_dataframe()
-    study_df.to_csv("/logs/STUDY_NAME.csv", index=False)
+    study_df.to_csv(f"/logs/{STUDY_NAME}.csv", index=False)
     logger.info(study.best_params)
 
     return study.best_params

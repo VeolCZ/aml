@@ -125,4 +125,6 @@ class ViT(torch.nn.Module, ModelInterface):
         return final_bbox, final_cls
 
     def load(self, path: str) -> None:
-        self.load_state_dict(torch.load(path))
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.to(device=device)
+        self.load_state_dict(torch.load(path, map_location=device))

@@ -85,7 +85,7 @@ class ViTTrainer:
 
             yield train_loader, val_loader
 
-    def train(self, model_path: str = "/logs/model", save: bool = False) -> float:
+    def train(self, model_path: str = "/weights/model", save: bool = False) -> float:
         """
         Trains the ViT model using the configured K-Fold cross-validation setup
         and early stopping.
@@ -95,7 +95,7 @@ class ViTTrainer:
 
         Args:
             model_path (str, optional): The base path to save the best model checkpoint.
-                                        Defaults to "/logs/model".
+                                        Defaults to "/weights/model".
             save (bool, optional): Whether to save the best model checkpoint. Defaults to False.
 
         Returns:

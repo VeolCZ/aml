@@ -4,7 +4,6 @@ services:
       - "8000:8000"
     container_name: "aml"
     command: python3 main.py
-    shm_size: "20g"
     build:
       context: .
       dockerfile: Dockerfile
@@ -24,7 +23,6 @@ services:
       - ./weights:/weights
       - ./logs:/logs
       - ./weights:/weights
-    runtime: nvidia
     healthcheck:
       test: [ "CMD", "python", "-c", "import sys; sys.exit(0)" ]
       interval: 30s

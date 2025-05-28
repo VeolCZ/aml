@@ -124,6 +124,9 @@ def produce_certainty_plot(data: pd.DataFrame) -> None:
 
 
 def make_visualization() -> None:
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+
     data_birds = pd.read_csv("/data/labels.csv")
     data_birds = add_supper_classes_to_data(data_birds, save=False)
     produce_tsne(data_birds.copy())
