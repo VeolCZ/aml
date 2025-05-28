@@ -5,6 +5,7 @@ from make_labels import make_labels
 from make_visualisations import make_visualization
 from random_forests.forest_train_util import train_composite_forest
 from ViT.ViT_utils import optimize_hyperparameters, train_vit
+from streamlit_app.run_streamlit import run_streamlit
 
 
 logging.basicConfig(
@@ -19,7 +20,6 @@ def help_func() -> None:
     print("Available commands:")
     for arg, (_, desc) in command_map.items():
         print(f"  {arg}: {desc}")
-    print("\nYou can combine multiple commands which will be executed in order, e.g.: --make_labels --serve")
 
 
 command_map = {
@@ -30,11 +30,12 @@ command_map = {
     "--train_vit": (train_vit, "Trains the ViT model"),
     "--train_forest": (train_composite_forest, "Trains the Forest model"),
     "--serve": (serve, "Serve the models through API"),
+    "--streamlit": (run_streamlit, "Run the streamlit application"),
 }
 
 
 def main() -> None:
-    if len(sys.argv) < 2 or all(arg not in command_map for arg in sys.argv[1:]):
+    if len(sys.argv) != 2 or all(arg not in command_map for arg in sys.argv[1:]):
         help_func()
     else:
         executed_commands = set()

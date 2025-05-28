@@ -34,7 +34,12 @@ sudo bash run.sh # or execute the content of run.sh
 ```
 
 ## Windows notes
-Ensure that you have WSL installed and execute these command using the WSL console (or git bash) as the project is build with unix like environment in mind. Additionaly Docker is sometimes misbehaving on windows but please make sure the Docker app is running when you execute the `build.sh` / `run.sh` commands. Also it might not be necessary to use `sudo` and `bash` when using WSL depending on how your environment is setup. Additionaly you might encounter issues loading some files as windows has issues with certain characters in file names. In those cases rename the problematic files accordingly.
+Ensure that you have WSL installed and execute these command using the WSL console (or git bash) as the project is build with unix like environment in mind. Additionaly Docker is sometimes misbehaving on windows but please make sure the Docker app is running when you execute the `build.sh` / `run.sh` commands. Also it might not be necessary to use `sudo` and `bash` when using WSL depending on how your environment is setup.
+
+#### Possible problems:
+1. Issues loading files as windows has issues with certain characters in file names. In those cases rename the problematic files accordingly.
+2. Issues with zip (`build.sh: line 36: unzip: command not found`) in this case run `sudo apt install zip` in WSL
+3. Problems finding files in WSL. Use ls/cd to navigate to the `aml` directory. Executing commands outside of it will not work.
 
 ## Running without CUDA GPU
 To disable GPU support (and therefore avoid related issues) simply delete `docker-compose.override.yaml` from the root. However be careful not to commit these changes :).

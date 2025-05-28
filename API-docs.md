@@ -47,8 +47,11 @@ Example Successful Response (200 OK):
 | `200`       | OK: Prediction successful.                                                        | application/json | See example above.                                                                                                                                                     |
 | `400`       | Bad Request: Invalid base64 string, malformed image data, or preprocessing error. | application/json | {"detail": "Invalid base64 string. Ensure the image is correctly encoded."} or {"detail": "Malformed image data or unsupported image format. Error: [error message]"}` |
 | `422`       | Unprocessable Entity: Validation error due to incorrect input schema.             | application/json | {"detail": "Field "image" is required."} or {"detail": "Value is not a valid enumeration member; permitted: "ViT", "Forest""}                                          |
+| `500`       | Internal server error.             | application/json | {"detail": "Internal server error."}                                         |
 
 ## Example API call
+
+An example API call can be made using the following python code:
 
 ```python
 import base64
@@ -68,3 +71,5 @@ response = requests.post("http://localhost:8000/predict", headers=headers, data=
 print(f"Status Code: {response.status_code}")
 print(f"Response JSON: {response.json()}")
 ```
+
+Additionaly the Streamlit app we build also uses the API therefore it can se used to verify that the API is working.
