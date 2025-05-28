@@ -39,6 +39,9 @@ def showcase_prediction_results(results: dict, image: str | UploadedFile) -> Non
 
 st.title("Bird Classification and Bounding Box Estimation")
 
+image_to_display: str | UploadedFile | None = None
+image = None
+
 model_selection = st.selectbox(
     "Pick your model",
     options=["Visual Transformer", "Random Forest"],
@@ -53,29 +56,26 @@ elif model_selection == "Random Forest":
 select_preselected_image = st.toggle("Do you want to try out a preselected image?")
 
 if not select_preselected_image:
-    image_selection = st.file_uploader("Input your image", type=["jpg", "jpeg", "png"])
-    if image_selection is not None:
-        image = base64.b64encode(image_selection.read()).decode("utf-8")
+    image_to_display = st.file_uploader("Input your image", type=["jpg", "jpeg", "png"])
+    if image_to_display is not None:
+        image = base64.b64encode(image_to_display.read()).decode("utf-8")
 else:
     path = "/aml/streamlit_app/preselected_images"
-    image_selection = st.selectbox(
+    image_to_display = st.selectbox(
         "Choose a preselected image",
-        os.listdir(path),
+        [str(f) for f in os.listdir(path)],
     )
-    image_selection = path + "/" + image_selection
-    with open(image_selection, "rb") as image_file:
+    image_to_display = path + "/" + image_to_display
+    with open(image_to_display, "rb") as image_file:
         image = base64.b64encode(image_file.read()).decode("utf-8")
 
-if image_selection:
-
-    st.image(image_selection)
-
+if image:
     predict = st.button("PREDICT!")
 
-    if predict:
+    if predict and image_to_display:
         payload = {"image": image, "model": model}
         headers = {"Content-Type": "application/json"}
         prediction = requests.post(
             "http://localhost:8000/predict", headers=headers, data=json.dumps(payload)
         )
-        showcase_prediction_results(prediction.json(), image_selection)
+        showcase_prediction_results(prediction.json(), image_to_display)

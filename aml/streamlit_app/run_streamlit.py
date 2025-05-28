@@ -9,4 +9,4 @@ def run_streamlit() -> None:
     """
     api_thread = threading.Thread(target=serve)
     api_thread.start()
-    os.system("streamlit run /aml/streamlit_app/welcome.py --server.port=8080")
+    os.system("streamlit run /aml/streamlit_app/streamlit.py --server.port=8080")

@@ -1,10 +1,10 @@
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFile
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 
 def draw_bounding_box(
     image: UploadedFile | str, relative_coordinates: list[float]
-) -> Image.ImageFile:
+) -> ImageFile.ImageFile:
     """
     Draw a rectangle on a given image based on the given relative coordinates
     of the representative corners.
