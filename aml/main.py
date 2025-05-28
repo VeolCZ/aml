@@ -37,7 +37,7 @@ command_map = {
     "--train_vit": (train_vit, "Trains the ViT model"),
     "--train_forest": (train_composite_forest, "Trains the Forest model"),
     "--serve": (serve, "Serve the models through API"),
-    "--run_streamlit": (run_streamlit, "Run the streamlit application"),
+    "--streamlit": (run_streamlit, "Run the streamlit application"),
 }
 
 
