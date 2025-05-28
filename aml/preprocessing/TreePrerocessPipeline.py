@@ -9,7 +9,7 @@ from skimage.feature import hog
 from albumentations.pytorch import ToTensorV2
 from typing import Union
 
-SEED = int(os.getenv("SEED", 123))
+SEED = int(os.getenv("SEED", "123"))
 
 
 class TreePrerocessPipeline:

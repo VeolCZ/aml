@@ -9,7 +9,7 @@ from typing import Union
 from transformers import ViTImageProcessor, BatchFeature
 from numpy.typing import NDArray
 
-SEED = int(os.getenv("SEED", 123))
+SEED = int(os.getenv("SEED", "123"))
 
 
 class ViTPreprocessPipeline:

@@ -19,7 +19,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-SEED = int(os.getenv("SEED", 123))
+SEED = int(os.getenv("SEED", "123"))
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)

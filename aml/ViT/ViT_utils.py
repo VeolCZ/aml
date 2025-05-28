@@ -13,9 +13,9 @@ from preprocessing.ViTImageDataset import ViTImageDataset
 from tboard.summarywriter import write_summary
 from tboard.plotting import plot_confusion_matrix
 
-SEED = int(os.getenv("SEED", 123))
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
-TEST_SIZE = float(os.getenv("TEST_SIZE", 0.1))
+SEED = int(os.getenv("SEED", "123"))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
+TEST_SIZE = float(os.getenv("TEST_SIZE", "0.1"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -32,7 +32,7 @@ def train_vit() -> None:
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
 
     # Config
-    SEED = int(os.getenv("SEED", 123))
+    SEED = int(os.getenv("SEED", "123"))
     TEST_SIZE = 0.1
     torch.manual_seed(SEED)
 
@@ -63,7 +63,7 @@ def eval_vit() -> None:
     assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
 
     # Config
-    SEED = int(os.getenv("SEED", 123))
+    SEED = int(os.getenv("SEED", "123"))
     TEST_SIZE = 0.1
     torch.manual_seed(SEED)
 

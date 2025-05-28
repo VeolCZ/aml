@@ -5,7 +5,7 @@ from transformers import ViTForImageClassification
 from interface.ModelInterface import ModelInterface
 from datetime import datetime
 
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 

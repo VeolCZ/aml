@@ -11,8 +11,8 @@ from sklearn.model_selection import RepeatedKFold
 from torch.utils.data import DataLoader, Subset
 from preprocessing.ViTImageDataset import LabelType, ViTImageDataset
 
-SEED = int(os.getenv("SEED", 123))
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
+SEED = int(os.getenv("SEED", "123"))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 
 
 class ViTTrainer:

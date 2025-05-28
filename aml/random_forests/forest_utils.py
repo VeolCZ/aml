@@ -10,7 +10,7 @@ from preprocessing.TreeImageDataset import TreeImageDataset, TreePrerocessPipeli
 from tboard.plotting import plot_confusion_matrix
 from tboard.summarywriter import write_summary
 
-SEED = int(os.getenv("SEED", 123))
+SEED = int(os.getenv("SEED", "123"))
 TEST_SIZE = float(os.getenv("TEST_SIZE", 0.1))
 
 

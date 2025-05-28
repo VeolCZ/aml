@@ -5,7 +5,7 @@ import seaborn as sns
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
 
-SEED = int(os.getenv("SEED", 123))
+SEED = int(os.getenv("SEED", "123"))
 
 
 def add_supper_classes_to_data(data: pd.DataFrame, save: bool = True) -> pd.DataFrame:

@@ -7,8 +7,8 @@ from random_forests.RandomForest import RandomForest
 from torch.utils.data import Dataset, DataLoader
 from joblib import parallel_backend
 
-SEED = int(os.getenv("SEED", 123))
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
+SEED = int(os.getenv("SEED", "123"))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 
 
 class RandomForestClassifierModel(RandomForest):
