@@ -1,5 +1,8 @@
 services:
   app:
+    ports:
+      - "8080:8080"
+      - "8000:8000"
     container_name: "aml"
     command: python3 main.py
     shm_size: "20g"
@@ -19,8 +22,9 @@ services:
     volumes:
       - ./aml:/aml
       - ./data:/data
+      - ./weights:/weights
       - ./logs:/logs
-    runtime: nvidia
+      - ./weights:/weights
     healthcheck:
       test: [ "CMD", "python", "-c", "import sys; sys.exit(0)" ]
       interval: 30s

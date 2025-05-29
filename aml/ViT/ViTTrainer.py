@@ -11,6 +11,9 @@ from sklearn.model_selection import RepeatedKFold
 from torch.utils.data import DataLoader, Subset
 from preprocessing.ViTImageDataset import LabelType, ViTImageDataset
 
+SEED = int(os.getenv("SEED", "123"))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
+
 
 class ViTTrainer:
     """
@@ -19,11 +22,11 @@ class ViTTrainer:
     cross-validation and early stopping.
 
     Assumes the ViT model has separate heads for bounding box prediction
-    (`bbox_head`) and classification (`cls_head`).
+    (bbox_head) and classification (cls_head).
     """
 
     def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, learning_rate: float = 0.001,
-                 n_splits: int = 5, epochs: int = 5, batch_size: int = 32, patience: int = 2,
+                 n_splits: int = 5, epochs: int = 5, batch_size: int = BATCH_SIZE, patience: int = 2,
                  annealing_rate: float = 0.000001) -> None:
         """
         Initializes the ViTTrainer.
@@ -51,10 +54,8 @@ class ViTTrainer:
         self.batch_size = batch_size
         self.epochs = epochs
         self._logger = logging.getLogger(self.__class__.__name__)
-        self.SEED = int(os.getenv("SEED", 123))
         self.patience = patience
         self.annealing_rate = annealing_rate
-        torch.manual_seed(self.SEED)
 
     def get_loaders(self) -> Generator[tuple[DataLoader, DataLoader], None, None]:
         """
@@ -62,8 +63,8 @@ class ViTTrainer:
         of Repeated K-Fold cross-validation.
 
         The number of repeats is calculated such that there are at least
-        'epochs' total splits generated. The main training loop in `train`
-        will consume exactly `epochs` splits from this generator.
+        'epochs' total splits generated. The main training loop in train
+        will consume exactly epochs splits from this generator.
 
         Yields:
             Generator[Tuple[DataLoader, DataLoader], None, None]: A generator
@@ -72,7 +73,7 @@ class ViTTrainer:
         NOTE: For optimal performance set epochs to be fully divisable by n_splits
         """
         kfold = RepeatedKFold(n_splits=self.n_splits, n_repeats=math.ceil(self.epochs/self.n_splits),
-                              random_state=self.SEED)
+                              random_state=SEED)
 
         for train_idx, val_idx in kfold.split(self.dataset):
             train_subset = Subset(self.dataset, train_idx)
@@ -84,7 +85,7 @@ class ViTTrainer:
 
             yield train_loader, val_loader
 
-    def train(self, model_path: str = "/logs/model", save: bool = False) -> float:
+    def train(self, model_path: str = "/weights/model", save: bool = False) -> float:
         """
         Trains the ViT model using the configured K-Fold cross-validation setup
         and early stopping.
@@ -94,7 +95,7 @@ class ViTTrainer:
 
         Args:
             model_path (str, optional): The base path to save the best model checkpoint.
-                                        Defaults to "/logs/model".
+                                        Defaults to "/weights/model".
             save (bool, optional): Whether to save the best model checkpoint. Defaults to False.
 
         Returns:

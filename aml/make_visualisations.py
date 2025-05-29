@@ -1,8 +1,11 @@
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
+
+SEED = int(os.getenv("SEED", "123"))
 
 
 def add_supper_classes_to_data(data: pd.DataFrame, save: bool = True) -> pd.DataFrame:
@@ -55,7 +58,7 @@ def produce_tsne(data: pd.DataFrame) -> None:
     end = cols.index("attr_312_pres") + 1
     x = data.iloc[:, start:end]
 
-    tsne = TSNE(n_components=2, random_state=42)
+    tsne = TSNE(n_components=2, random_state=SEED)
     pca = PCA(n_components=0.6)
     x_pca = pca.fit_transform(x)
     x_embedded = tsne.fit_transform(x_pca)
@@ -106,7 +109,6 @@ def produce_certainty_plot(data: pd.DataFrame) -> None:
 
     Returns:
         None
-
     """
     first_cert = data.columns.get_loc("attr_1_cert")
     cert_sums_averages = data.iloc[:, first_cert:-1].sum() / data.shape[0]
@@ -122,6 +124,9 @@ def produce_certainty_plot(data: pd.DataFrame) -> None:
 
 
 def make_visualization() -> None:
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+
     data_birds = pd.read_csv("/data/labels.csv")
     data_birds = add_supper_classes_to_data(data_birds, save=False)
     produce_tsne(data_birds.copy())

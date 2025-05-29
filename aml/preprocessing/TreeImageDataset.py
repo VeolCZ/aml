@@ -3,7 +3,7 @@ import pandas as pd
 import torch
 import torchvision.transforms.functional as F
 from numpy.typing import NDArray
-from preprocessing.ViTImageDataset import DatasetType, LabelType, d_type, use_cols, class_count
+from preprocessing.ViTImageDataset import DatasetType, LabelType, d_type, use_cols
 from preprocessing.TreePrerocessPipeline import TreePrerocessPipeline
 from torch.utils.data import Dataset
 from torchvision.io import read_image
@@ -63,12 +63,9 @@ class TreeImageDataset(Dataset):
         transformed_bboxes = transformed["bboxes"]
         transformed_labels = int(transformed["class_labels"][0])
 
-        one_hot_cls = torch.zeros((class_count), dtype=torch.float)
-        one_hot_cls[transformed_labels - 1] = 1.0
-
         labels = {
             "bbox": torch.tensor(transformed_bboxes, dtype=torch.float),
-            "cls": one_hot_cls
+            "cls": torch.tensor(transformed_labels) - 1
         }
 
         return transformed_image, labels

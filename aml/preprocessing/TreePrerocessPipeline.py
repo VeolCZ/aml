@@ -1,7 +1,5 @@
 import os
 import albumentations as A
-import numpy as np
-import random
 import torch
 import cv2
 from numpy.typing import NDArray
@@ -9,13 +7,14 @@ from skimage.feature import hog
 from albumentations.pytorch import ToTensorV2
 from typing import Union
 
-SEED = int(os.getenv("SEED", 123))
+SEED = int(os.getenv("SEED", "123"))
 
 
 class TreePrerocessPipeline:
     """
     Provides static methods for defining image transformation pipelines for tree image data.
     """
+    img_size = 224
 
     @staticmethod
     def get_base_train_transform() -> A.Compose:
@@ -27,12 +26,9 @@ class TreePrerocessPipeline:
         Returns:
             A.Compose: The training transformation pipeline.
         """
-        torch.manual_seed(SEED)
-        random.seed(SEED)
-        np.random.seed(SEED)
-
         train_transforms: list[Union[A.BasicTransform, A.Affine, A.BaseCompose]] = [
-            A.RandomResizedCrop(scale=(0.8, 1.0), p=1.0, size=(224, 224)),
+            A.RandomResizedCrop(scale=(0.8, 1.0), p=1.0, size=(
+                TreePrerocessPipeline.img_size, TreePrerocessPipeline.img_size)),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.1),
             A.SafeRotate(limit=10, border_mode=cv2.BORDER_CONSTANT),
@@ -69,13 +65,9 @@ class TreePrerocessPipeline:
         Returns:
             A.Compose: The evaluation transformation pipeline.
         """
-        torch.manual_seed(SEED)
-        random.seed(SEED)
-        np.random.seed(SEED)
-
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
             A.Resize(height=256, width=256),
-            A.CenterCrop(height=224, width=224),
+            A.CenterCrop(height=TreePrerocessPipeline.img_size, width=TreePrerocessPipeline.img_size),
             A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ToTensorV2(),
         ]
@@ -111,3 +103,14 @@ class TreePrerocessPipeline:
                        feature_vector=True)
 
         return torch.tensor(features)
+
+    @staticmethod
+    def tree_predict_transform(image: NDArray) -> torch.Tensor:
+        transform = TreePrerocessPipeline.get_base_eval_transform()
+        raw_img = transform(
+            image=image,
+            bboxes=[],
+            class_labels=[])["image"]
+        trans_image = raw_img.permute(1, 2, 0).numpy()
+        features = TreePrerocessPipeline.tree_image_transform(trans_image)
+        return features.reshape(1, -1)

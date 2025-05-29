@@ -1,14 +1,14 @@
 import os
 import albumentations as A
-import numpy as np
-import random
 import torch
 import cv2
 from albumentations.pytorch import ToTensorV2
 from typing import Union
-from transformers import ViTImageProcessor, BatchFeature
+from transformers import ViTImageProcessor
+from transformers.feature_extraction_sequence_utils import BatchFeature
+from numpy.typing import NDArray
 
-SEED = int(os.getenv("SEED", 123))
+SEED = int(os.getenv("SEED", "123"))
 
 
 class ViTPreprocessPipeline:
@@ -19,6 +19,7 @@ class ViTPreprocessPipeline:
     # static prop
     processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224", cache_dir="/data/vit_preprocess")
     processor.do_rescale = False
+    img_size = 224
 
     @staticmethod
     def get_base_train_transform() -> A.Compose:
@@ -30,12 +31,9 @@ class ViTPreprocessPipeline:
         Returns:
             A.Compose: The training transformation pipeline.
         """
-        torch.manual_seed(SEED)
-        random.seed(SEED)
-        np.random.seed(SEED)
-
         train_transforms: list[Union[A.BasicTransform, A.Affine, A.BaseCompose]] = [
-            A.RandomResizedCrop(scale=(0.8, 1.0), p=1.0, size=(224, 224)),
+            A.RandomResizedCrop(scale=(0.8, 1.0), p=1.0, size=(
+                ViTPreprocessPipeline.img_size, ViTPreprocessPipeline.img_size)),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.1),
             A.SafeRotate(limit=10, border_mode=cv2.BORDER_CONSTANT),
@@ -72,13 +70,9 @@ class ViTPreprocessPipeline:
         Returns:
             A.Compose: The evaluation transformation pipeline.
         """
-        torch.manual_seed(SEED)
-        random.seed(SEED)
-        np.random.seed(SEED)
-
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
             A.Resize(height=256, width=256),
-            A.CenterCrop(height=224, width=224),
+            A.CenterCrop(height=ViTPreprocessPipeline.img_size, width=ViTPreprocessPipeline.img_size),
             A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), normalization="min_max"),
             ToTensorV2(),
         ]
@@ -106,3 +100,13 @@ class ViTPreprocessPipeline:
             BatchFeature: The processed image features.
         """
         return ViTPreprocessPipeline.processor(image)
+
+    @staticmethod
+    def vit_predict_transform(image: NDArray) -> torch.Tensor:
+        transform = ViTPreprocessPipeline.get_base_eval_transform()
+        raw_img = transform(
+            image=image,
+            bboxes=[],
+            class_labels=[])["image"]
+        features = ViTPreprocessPipeline.vit_image_transform(raw_img)
+        return torch.tensor(features.pixel_values[0]).unsqueeze(0)

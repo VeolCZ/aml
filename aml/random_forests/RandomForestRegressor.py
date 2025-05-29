@@ -1,7 +1,14 @@
+import multiprocessing
+from joblib import parallel_backend
+import numpy as np
+import os
 from sklearn.ensemble import RandomForestRegressor
 import torch
 from random_forests.RandomForest import RandomForest
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
+
+SEED = int(os.getenv("SEED", "123"))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 
 
 class RandomForestRegressorModel(RandomForest):
@@ -11,16 +18,42 @@ class RandomForestRegressorModel(RandomForest):
     """
 
     def __init__(self) -> None:
-        super().__init__(RandomForestRegressor())
+        super().__init__(RandomForestRegressor(n_jobs=-1,
+                                               random_state=SEED, n_estimators=200, min_samples_split=2,
+                                               min_samples_leaf=4, max_depth=40, verbose=2, max_features="sqrt"))
 
     def fit(self, train_dataset: Dataset) -> None:
+        """
+        Trains the model
+        Args:
+            train_dataset(Dataset): the dataset the forest needs to be trained on.
+        """
         x_train, y_train = [], []
-        for img, label in iter(train_dataset):
-            x_train.append(img)
-            y_train.append(label["bbox"].tolist()[0])
+        dataloader = DataLoader(
+            train_dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            num_workers=multiprocessing.cpu_count(),
+        )
 
-        self.model.fit(x_train, y_train)
+        for _, (imgs, labels) in enumerate(dataloader):
+            x_train.append(imgs)
+            y_train.append(np.array([bbox.tolist()[0] for bbox in labels["bbox"]]))
+
+        x_train_ds = np.concatenate(x_train, axis=0)
+        y_train_ds = np.concatenate(y_train, axis=0)
+
+        with parallel_backend("loky", n_jobs=-1):
+            self.model.fit(x_train_ds, y_train_ds)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Makes a prediction from the model(bounding box)
+        Args:
+            data(torch:Tensor): image in the form of a tensor.
+        Returns:
+            prediction(tuple(torch.Tensor,torch.Tensor)): first tensor contains the boundingbox prediction
+                the second tensor is empty
+        """
         bbox = self.model.predict(data)
         return torch.tensor(bbox), torch.empty((1))

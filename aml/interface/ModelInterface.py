@@ -9,7 +9,7 @@ class ModelInterface(abc.ABC):
         raise NotImplementedError("Not implemented.")
 
     @abc.abstractmethod
-    def predict(self, data: torch.Tensor, device: str = "cpu") -> tuple[torch.Tensor, torch.Tensor]:
+    def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError("Not implemented.")
 
     @abc.abstractmethod
