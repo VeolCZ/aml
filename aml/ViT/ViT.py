@@ -10,7 +10,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class ViT(torch.nn.Module, ModelInterface):
-    def __init__(self, hidden_size: int = 1024, num_classes: int = 200, dp_rate: float = 0.1) -> None:
+    def __init__(self, hidden_size: int = 1024, num_classes: int = 200, dp_rate: float = 0.05) -> None:
         """
         Initializes the ViT model with a pre-trained backbone and custom heads.
 
@@ -24,6 +24,7 @@ class ViT(torch.nn.Module, ModelInterface):
         """
         super(ViT, self).__init__()
         backbone_out_size = 768
+        num_encoder_layers_to_unfreeze = 3
 
         self.backbone = ViTForImageClassification.from_pretrained(
             "google/vit-base-patch16-224", cache_dir="/data/vit")
@@ -31,6 +32,18 @@ class ViT(torch.nn.Module, ModelInterface):
 
         for param in self.backbone.parameters():
             param.requires_grad = False
+
+        encoder_layers = self.backbone.vit.encoder.layer
+        total_encoder_layers = len(encoder_layers)
+
+        layers_to_unfreeze = min(num_encoder_layers_to_unfreeze, total_encoder_layers)
+
+        for i in range(total_encoder_layers - layers_to_unfreeze, total_encoder_layers):
+            for param in encoder_layers[i].parameters():
+                param.requires_grad = True
+
+        for param in self.backbone.vit.layernorm.parameters():
+            param.requires_grad = True
 
         self.cls_head = torch.nn.Sequential(
             torch.nn.Linear(backbone_out_size, hidden_size),
@@ -56,6 +69,7 @@ class ViT(torch.nn.Module, ModelInterface):
             torch.nn.Dropout(dp_rate),
             torch.nn.LeakyReLU(),
             torch.nn.Linear(hidden_size // 4, 4),
+            torch.nn.Sigmoid(),
         )
 
         for layer in self.cls_head + self.bbox_head:
@@ -90,11 +104,11 @@ class ViT(torch.nn.Module, ModelInterface):
         from ViT.ViTTrainer import ViTTrainer  # Import as needed
 
         model_path = f"/data/ViT_{datetime.utcnow()}"
-        learning_rate = 0.0012278101209126883
-        annealing_rate = 6.1313110341652e-07
-        n_of_folds = 10
-        epochs = 20
-        patience = 4
+        learning_rate = 1e-3  # 4.5044719925484676e-05
+        annealing_rate = 1e-5  # 2.9188464128352595e-08
+        n_of_folds = 5
+        epochs = 10
+        patience = 10
 
         trainer = ViTTrainer(self, DEVICE, dataset,
                              epochs=epochs, batch_size=BATCH_SIZE, patience=patience,

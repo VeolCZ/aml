@@ -4,7 +4,6 @@ ARG OS_VERSION=ubuntu22.04
 
 FROM nvidia/cuda:${CUDA_VERSION}-${BASE_IMAGE_TYPE}-${OS_VERSION}
 
-
 WORKDIR /aml
 
 RUN apt-get update && apt-get install -y \

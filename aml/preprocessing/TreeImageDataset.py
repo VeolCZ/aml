@@ -1,12 +1,10 @@
-import numpy as np
 import pandas as pd
 import torch
-import torchvision.transforms.functional as F
+import torchvision
 from numpy.typing import NDArray
 from preprocessing.ViTImageDataset import DatasetType, LabelType, d_type, use_cols
 from preprocessing.TreePrerocessPipeline import TreePrerocessPipeline
 from torch.utils.data import Dataset
-from torchvision.io import read_image
 
 
 class TreeImageDataset(Dataset):
@@ -54,9 +52,12 @@ class TreeImageDataset(Dataset):
         Returns:
             tuple[torch.Tensor, LabelType]: Transformed image and labels ("bbox", "cls" tensors).
         """
+        xmin, ymin, width, height = bbox
+        bbox_pascal_voc = [xmin, ymin, xmin + width, ymin + height]
+
         transformed = self._base_transform(
             image=image_np,
-            bboxes=[bbox],
+            bboxes=[bbox_pascal_voc],
             class_labels=[label]
         )
         transformed_image = transformed["image"]
@@ -64,7 +65,7 @@ class TreeImageDataset(Dataset):
         transformed_labels = int(transformed["class_labels"][0])
 
         labels = {
-            "bbox": torch.tensor(transformed_bboxes, dtype=torch.float),
+            "bbox": torch.tensor(transformed_bboxes, dtype=torch.float) / TreePrerocessPipeline.img_size,
             "cls": torch.tensor(transformed_labels) - 1
         }
 
@@ -99,14 +100,12 @@ class TreeImageDataset(Dataset):
             raise RuntimeError(f"Error reading data for index {idx} from DataFrame: {e}")
 
         try:
-            image_tensor = read_image(img_path)
-            image = F.to_pil_image(image_tensor)
-            image_np = np.array(image)
+            image_tensor = torchvision.io.decode_image(img_path).permute(1, 2, 0)
 
         except Exception as e:
             raise RuntimeError(f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
 
-        transformed_image, labels = self._transform_data(image_np, class_id, bbox)
+        transformed_image, labels = self._transform_data(image_tensor.numpy(), class_id, bbox)
 
         try:
             image_numpy_hwc = transformed_image.permute(1, 2, 0).numpy()

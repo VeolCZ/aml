@@ -19,6 +19,9 @@ class ViTPreprocessPipeline:
     # static prop
     processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224", cache_dir="/data/vit_preprocess")
     processor.do_rescale = False
+    processor.do_resize = False
+    processor.do_normalize = False
+    processor.do_convert_rgb = False
     img_size = 224
 
     @staticmethod
@@ -43,20 +46,18 @@ class ViTPreprocessPipeline:
                 A.ColorJitter(p=0.3, hue=(-0.04, 0.04)),
                 A.MotionBlur(p=0.4),
                 A.RandomBrightnessContrast(p=0.4),
-                A.GaussNoise(p=0.1),
-                A.RandomRain(p=0.05)
+                A.GaussNoise(p=0.1)
             ], p=1, n=2, replace=False),
 
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), normalization="min_max"),
+            A.Normalize(),
             ToTensorV2(),
         ]
 
         return A.Compose(transforms=train_transforms,
                          bbox_params=A.BboxParams(
-                             format="coco",
+                             format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.2,
-                             min_area=10,
+                             min_visibility=0.8,
                              clip=True,
                          ),
                          seed=SEED
@@ -71,18 +72,16 @@ class ViTPreprocessPipeline:
             A.Compose: The evaluation transformation pipeline.
         """
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
-            A.Resize(height=256, width=256),
-            A.CenterCrop(height=ViTPreprocessPipeline.img_size, width=ViTPreprocessPipeline.img_size),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), normalization="min_max"),
+            A.Resize(height=ViTPreprocessPipeline.img_size, width=ViTPreprocessPipeline.img_size),
+            A.Normalize(),
             ToTensorV2(),
         ]
 
         return A.Compose(transforms=eval_transforms,
                          bbox_params=A.BboxParams(
-                             format="coco",
+                             format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.2,
-                             min_area=10,
+                             min_visibility=0.8,
                              clip=True
                          ),
                          seed=SEED

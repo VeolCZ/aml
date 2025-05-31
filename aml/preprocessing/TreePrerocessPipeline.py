@@ -38,21 +38,19 @@ class TreePrerocessPipeline:
                 A.ColorJitter(p=0.3, hue=(-0.04, 0.04)),
                 A.MotionBlur(p=0.4),
                 A.RandomBrightnessContrast(p=0.4),
-                A.GaussNoise(p=0.1),
-                A.RandomRain(p=0.05)
+                A.GaussNoise(p=0.1)
             ], p=1, n=2, replace=False),
 
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            A.Normalize(),
             ToTensorV2(),
         ]
 
         return A.Compose(transforms=train_transforms,
                          bbox_params=A.BboxParams(
-                             format="coco",
+                             format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.2,
-                             min_area=10,
-                             clip=True
+                             min_visibility=0.8,
+                             clip=True,
                          ),
                          seed=SEED
                          )
@@ -66,18 +64,16 @@ class TreePrerocessPipeline:
             A.Compose: The evaluation transformation pipeline.
         """
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
-            A.Resize(height=256, width=256),
-            A.CenterCrop(height=TreePrerocessPipeline.img_size, width=TreePrerocessPipeline.img_size),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            A.Resize(height=TreePrerocessPipeline.img_size, width=TreePrerocessPipeline.img_size),
+            A.Normalize(),
             ToTensorV2(),
         ]
 
         return A.Compose(transforms=eval_transforms,
                          bbox_params=A.BboxParams(
-                             format="coco",
+                             format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.2,
-                             min_area=10,
+                             min_visibility=0.8,
                              clip=True
                          ),
                          seed=SEED

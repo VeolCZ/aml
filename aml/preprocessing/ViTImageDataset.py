@@ -1,10 +1,8 @@
-import numpy as np
 import pandas as pd
 import torch
-import torchvision.transforms.functional as F
+import torchvision
 from numpy.typing import NDArray
 from torch.utils.data import Dataset
-from torchvision.io import read_image
 from typing import Literal, Union
 from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline
 
@@ -62,23 +60,26 @@ class ViTImageDataset(Dataset):
         Returns:
             tuple[torch.Tensor, LabelType]: Transformed image and labels ("bbox", "cls" tensors).
         """
+        xmin, ymin, width, height = bbox
+        bbox_pascal_voc = [xmin, ymin, xmin + width, ymin + height]
+
         transformed = self._base_transform(
             image=image_np,
-            bboxes=[bbox],
+            bboxes=[bbox_pascal_voc],
             class_labels=[label]
         )
-        transformed_image = transformed["image"]
+        transformed_image: torch.Tensor = transformed["image"]
         transformed_bboxes = transformed["bboxes"]
         transformed_labels = int(transformed["class_labels"][0])
-
-        one_hot_cls = torch.zeros((class_count), dtype=torch.float)
-        one_hot_cls[transformed_labels - 1] = 1.0
+        one_hot_cls = torch.zeros((class_count))
+        one_hot_cls[transformed_labels - 1] = 1
 
         labels = {
-            "bbox": torch.tensor(transformed_bboxes, dtype=torch.float),
+            "bbox": torch.tensor(transformed_bboxes) / ViTPreprocessPipeline.img_size,
             "cls": one_hot_cls
         }
 
+        # print(transformed_image.type(dtype=torch.float16).dtype)
         return transformed_image, labels
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, LabelType]:
@@ -109,15 +110,12 @@ class ViTImageDataset(Dataset):
                 f"Error reading data for index {idx} from DataFrame: {e}")
 
         try:
-            image_tensor = read_image(img_path)
-            image = F.to_pil_image(image_tensor)
-            image_np = np.array(image)
-
+            image_tensor = torchvision.io.decode_image(img_path).permute(1, 2, 0)
         except Exception as e:
             raise RuntimeError(
                 f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
 
-        transformed_image, labels = self._transform_data(image_np, class_id, bbox)
+        transformed_image, labels = self._transform_data(image_tensor.numpy(), class_id, bbox)
 
         try:
             image_features = ViTPreprocessPipeline.vit_image_transform(
