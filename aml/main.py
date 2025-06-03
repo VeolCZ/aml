@@ -1,16 +1,13 @@
 import logging
 import os
-import random
 import sys
-import numpy as np
-import torch
+from util import set_seeds
 from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit
 from make_visualisations import make_visualization
 from api.api import serve
 from make_labels import make_labels
 from random_forests.forest_utils import train_composite, eval_composite
 from streamlit_app.run_streamlit import run_streamlit
-
 
 logging.basicConfig(
     level="INFO",
@@ -20,21 +17,17 @@ logging.basicConfig(
 )
 
 SEED = int(os.getenv("SEED", "123"))
-random.seed(SEED)
-np.random.seed(SEED)
-torch.manual_seed(SEED)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed_all(SEED)
+set_seeds(SEED)
 
 
 def help_func() -> None:
     print("Available commands:")
-    for arg, (_, desc) in command_map.items():
+    for arg, (_, desc) in COMMAND_MAP.items():
         print(f"  {arg}: {desc}")
     print("Example usage: bash run.sh --streamlit")
 
 
-command_map = {
+COMMAND_MAP = {
     "--help": (help_func, "Shows this help message"),
     "--make_labels": (make_labels, "Creates a labels.csv file in /data"),
     "--make_visualization": (make_visualization, "Create visualizations of /data"),
@@ -49,17 +42,17 @@ command_map = {
 
 
 def main() -> None:
-    if len(sys.argv) != 2 or all(arg not in command_map for arg in sys.argv[1:]):
+    if len(sys.argv) != 2 or all(arg not in COMMAND_MAP for arg in sys.argv[1:]):
         help_func()
     else:
         executed_commands = set()
 
         for arg in sys.argv[1:]:
-            if arg in command_map and arg not in executed_commands:
-                func, _ = command_map[arg]
+            if arg in COMMAND_MAP and arg not in executed_commands:
+                func, _ = COMMAND_MAP[arg]
                 func()
                 executed_commands.add(arg)
-            elif arg not in command_map:
+            elif arg not in COMMAND_MAP:
                 print(f"Warning: Unknown command '{arg}'")
 
 

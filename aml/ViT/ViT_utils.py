@@ -6,8 +6,10 @@ import numpy as np
 import multiprocessing
 from ViT.ViT import ViT
 from torch.utils.data import DataLoader, Subset
+from util import set_seeds
 from sklearn.model_selection import train_test_split
 from ViT.ViTTrainer import ViTTrainer
+from preprocessing.data_util import get_data_splits
 from evaluator.Evaluator import Evaluator
 from preprocessing.ViTImageDataset import ViTImageDataset
 from tboard.summarywriter import write_summary
@@ -19,96 +21,79 @@ TEST_SIZE = float(os.getenv("TEST_SIZE", "0.1"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def train_vit() -> None:
-    """
-    Trains a Vision Transformer (ViT) model on an image dataset.
-
-    Global variables:
-        device (torch.device): The device (CPU or CUDA) on which to perform computations.
-    """
+def train_vit(n: int = 2) -> None:
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
 
-    # Datasets
-    train_dataset = ViTImageDataset(type="train")
+    logger = logging.getLogger("ViT Trainer")
+    for i in range(n):
+        iter_seed = SEED+i
+        set_seeds(iter_seed)
+        logger.info(f"Training with seed {iter_seed}")
 
-    all_labels = train_dataset.get_cls_labels()
-    train_indices, _, _, _ = train_test_split(
-        np.arange(len(train_dataset)),
-        all_labels,
-        test_size=TEST_SIZE,
-        stratify=all_labels,
-        random_state=SEED
-    )
+        model = ViT()
+        train_dataset, _, _ = get_data_splits(ViTImageDataset("train"),
+                                              ViTImageDataset("eval"), seed=iter_seed)
 
-    train_dataset_subset = Subset(train_dataset, train_indices)
-
-    # Train the model
-    model = ViT()
-    model.fit(train_dataset_subset)
+        model.fit(train_dataset)
+        model.save(f"/weights/ViT/{iter_seed}")
 
 
-def eval_vit() -> None:
+def eval_vit(n: int = 2) -> None:
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
-    assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
+    assert os.path.exists("/weights/ViT"), "Please ensure the /weights/ViT directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
-    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
 
-    model = ViT()
-    model.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
-    eval_dataset = ViTImageDataset(type="eval")
+    logger = logging.getLogger("ViT Eval")
+    for i in range(n):
+        iter_seed = SEED+i
+        set_seeds(iter_seed)
+        logger.info(f"Evaluating with seed {iter_seed}")
 
-    all_labels = eval_dataset.get_cls_labels()
-    _, test_indices, _, _ = train_test_split(
-        np.arange(len(eval_dataset)),
-        all_labels,
-        test_size=TEST_SIZE,
-        stratify=all_labels,
-        random_state=SEED
-    )
+        model = ViT()
+        model.load(f"/weights/ViT/{iter_seed}.pth")
 
-    test_dataset = Subset(eval_dataset, test_indices)
-    dataloader = DataLoader(
-        test_dataset,
-        batch_size=BATCH_SIZE,
-        shuffle=True,
-        num_workers=multiprocessing.cpu_count(),
-        pin_memory=True
-    )
+        _, _, test_dataset = get_data_splits(ViTImageDataset("train"),
+                                             ViTImageDataset("eval"), seed=iter_seed)
+        dataloader = DataLoader(
+            test_dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            num_workers=multiprocessing.cpu_count(),
+            pin_memory=True
+        )
+        x_all_batches: list[torch.Tensor] = []
+        y_all_batches: list[torch.Tensor] = []
+        z_all_batches: list[torch.Tensor] = []
 
-    x_all_batches: list[torch.Tensor] = []
-    y_all_batches: list[torch.Tensor] = []
-    z_all_batches: list[torch.Tensor] = []
+        for _, (imgs_batch, labels_batch) in enumerate(dataloader):
+            x_all_batches.append(imgs_batch)
+            y_all_batches.append(labels_batch["cls"])
+            z_all_batches.append(labels_batch["bbox"])
 
-    for _, (imgs_batch, labels_batch) in enumerate(dataloader):
-        x_all_batches.append(imgs_batch)
-        y_all_batches.append(labels_batch["cls"])
-        z_all_batches.append(labels_batch["bbox"])
+        x = torch.cat(x_all_batches, dim=0)
+        y = torch.cat(y_all_batches, dim=0)
+        z = torch.cat(z_all_batches, dim=0).squeeze(1)
 
-    x = torch.cat(x_all_batches, dim=0)
-    y = torch.cat(y_all_batches, dim=0)
-    z = torch.cat(z_all_batches, dim=0).squeeze(1)
+        eval_res = Evaluator.eval(model, x, y, z)
+        confusion_matrix = eval_res.confusion_matrix
+        image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
 
-    eval_res = Evaluator.eval(model, x, y, z)
-    confusion_matrix = eval_res.confusion_matrix
-    image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
+        writer = write_summary(run_name="ViT")
+        writer.add_scalar("ViT/Accuracy", eval_res.accuracy, iter_seed)
+        writer.add_scalar("ViT/F1", eval_res.f1_score, iter_seed)
+        writer.add_scalar("ViT/top_k", eval_res.top_3, iter_seed)
+        writer.add_scalar("ViT/top_k", eval_res.top_5, iter_seed)
+        writer.add_scalar("ViT/multiroc", eval_res.multiroc, iter_seed)
+        writer.add_image("ViT/Confusion Matrix", image, iter_seed)
+        writer.add_scalar("ViT/IOU", eval_res.iou, iter_seed)
+        # add training plot here
+        writer.close()
 
-    writer = write_summary(run_name="ViT")
-    writer.add_scalar("ViT/Accuracy", eval_res.accuracy, 0)
-    writer.add_scalar("ViT/F1", eval_res.f1_score, 0)
-    writer.add_scalar("ViT/top_k", eval_res.top_3, 0)
-    writer.add_scalar("ViT/top_k", eval_res.top_5, 0)
-    writer.add_scalar("ViT/multiroc", eval_res.multiroc, 0)
-    writer.add_image("ViT/Confusion Matrix", image, 0)
-    writer.add_scalar("ViT/IOU", eval_res.iou, 0)
-    # add training plot here
-    writer.close()
-
-    logger = logging.getLogger("Forest Eval")
-    logger.info(eval_res)
+        logger.info(eval_res)
 
 
 def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:

@@ -49,7 +49,6 @@ class TreePrerocessPipeline:
                          bbox_params=A.BboxParams(
                              format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.8,
                              clip=True,
                          ),
                          seed=SEED
@@ -73,7 +72,6 @@ class TreePrerocessPipeline:
                          bbox_params=A.BboxParams(
                              format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.8,
                              clip=True
                          ),
                          seed=SEED

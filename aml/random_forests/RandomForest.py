@@ -16,7 +16,7 @@ class RandomForest(ModelInterface):
     def predict(self, _: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError("Not implemented.")
 
-    def save_model(self, path: str) -> None:
+    def save(self, path: str) -> None:
         """
         Saves the trained model to the specified path.
         Args:

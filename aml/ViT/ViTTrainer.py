@@ -84,7 +84,7 @@ class ViTTrainer:
 
             yield train_loader, val_loader
 
-    def train(self, model_path: str = "/weights/model", save: bool = False) -> float:
+    def train(self) -> float:
         """
         Trains the ViT model using the configured K-Fold cross-validation setup
         and early stopping.
@@ -145,10 +145,6 @@ class ViTTrainer:
                 self._logger.info(
                     f"Early stopping at epoch {epoch + 1} with patience {self.patience}")
                 break
-
-        if save:
-            torch.save(self.model.state_dict(), model_path +
-                       f"ValLoss_{round(best_val_loss, 3)}" + ".pth")
 
         return best_val_loss
 

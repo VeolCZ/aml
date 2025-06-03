@@ -3,7 +3,6 @@ import torch
 import os
 from transformers import ViTForImageClassification
 from interface.ModelInterface import ModelInterface
-from datetime import datetime
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -103,7 +102,6 @@ class ViT(torch.nn.Module, ModelInterface):
     def fit(self, dataset: ViTImageDataset) -> None:
         from ViT.ViTTrainer import ViTTrainer  # Import as needed
 
-        model_path = f"/data/ViT_{datetime.utcnow()}"
         learning_rate = 1e-3  # 4.5044719925484676e-05
         annealing_rate = 1e-5  # 2.9188464128352595e-08
         n_of_folds = 5
@@ -113,7 +111,7 @@ class ViT(torch.nn.Module, ModelInterface):
         trainer = ViTTrainer(self, DEVICE, dataset,
                              epochs=epochs, batch_size=BATCH_SIZE, patience=patience,
                              learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
-        trainer.train(model_path=model_path, save=True)
+        trainer.train()
 
     @torch.inference_mode()
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -142,3 +140,13 @@ class ViT(torch.nn.Module, ModelInterface):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(device=device)
         self.load_state_dict(torch.load(path, map_location=device))
+
+    def save(self, path: str) -> None:
+        """
+        Saves both random forests
+        Args:
+            path(str): the path to the directory where the forests need to be saved.
+        """
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+        torch.save(self.state_dict(), path + ".pth")
