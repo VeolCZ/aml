@@ -35,18 +35,6 @@ class Evaluator:
         return float(accuracy_score(true_label_indices, clas.argmax(dim=1)))
 
     @staticmethod
-    def get_IOU(bbox: torch.Tensor, true_label: torch.Tensor) -> float:
-        """
-        Calculate the Intersection over Union (IoU) for the model predictions.
-        args:
-            bbox (torch.Tensor): The predicted bounding boxes.
-            true_label (torch.Tensor): The true bounding boxes.
-        returns: The IoU score.
-        """
-        diagonal = torch.diag(torchvision.ops.box_iou(bbox, true_label))
-        return float(diagonal.mean(-1).item())
-
-    @staticmethod
     def get_top_k(clas: torch.Tensor, true_label_indices: torch.Tensor, k: int) -> float:
         """
         Calculate the top-k accuracy of the model predictions.
@@ -121,15 +109,16 @@ class Evaluator:
         return best, worst
 
     @staticmethod
-    def random_IOU(true_label: torch.Tensor) -> float:
+    def get_IOU(bbox: torch.Tensor, true_label: torch.Tensor) -> float:
         """
-        Calculate the Intersection over Union (IoU) as if the model predicted mean bounding box.
+        Calculate the Intersection over Union (IoU) for the model predictions.
         args:
+            bbox (torch.Tensor): The predicted bounding boxes.
             true_label (torch.Tensor): The true bounding boxes.
         returns: The IoU score.
         """
-        mean_bbox = true_label.mean(0).repeat((true_label.shape[0], 1))
-        return float(torchvision.ops.box_iou(mean_bbox, true_label).mean(-1).mean(-1).item())
+        diagonal = torch.diag(torchvision.ops.box_iou(bbox, true_label))
+        return float(diagonal.mean(-1).item())
 
     @staticmethod
     def eval(model: ModelInterface, input_data: torch.Tensor,
@@ -156,7 +145,7 @@ class Evaluator:
         best, worst = Evaluator.best_and_worst(clas, true_label_indices, clas.shape[1], k=3)
 
         iou = Evaluator.get_IOU(bbox, bbox_label)
-        random_iou = Evaluator.random_IOU(bbox_label)
+        random_iou = Evaluator.get_IOU(bbox_label.mean(0).repeat((bbox_label.shape[0], 1)), bbox_label)
 
         eval_results = EvalMetric(
             accuracy=acc,

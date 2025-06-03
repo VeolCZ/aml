@@ -147,11 +147,9 @@ class ViTAPI(ls.LitAPI):
         if data[1] == ModelType.VIT:
             input_tensor = data[0].to(self.device)
             bbox, cls = self.vit.predict(input_tensor)
-            bbox = bbox / ViTPreprocessPipeline.img_size
         else:
             input_tensor = data[0].cpu()
             bbox, cls = self.forest.predict(input_tensor)
-            bbox = bbox / TreePrerocessPipeline.img_size
 
         bbox_list = bbox.squeeze(0).cpu().numpy().tolist()
         class_id = int(cls.argmax(-1).item())

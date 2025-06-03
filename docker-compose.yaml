@@ -19,10 +19,10 @@ services:
       driver: "json-file"
       options:
         tag: "{{.Name}}}"
+    env_file: .env
     volumes:
       - ./aml:/aml
       - ./data:/data
-      - ./weights:/weights
       - ./logs:/logs
       - ./weights:/weights
     healthcheck:

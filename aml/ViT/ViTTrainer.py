@@ -2,7 +2,6 @@ import logging
 import math
 import os
 import torch
-import copy
 import torchvision
 import multiprocessing
 from ViT.ViT import ViT
@@ -112,11 +111,10 @@ class ViTTrainer:
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=self.epochs, eta_min=self.annealing_rate)
 
-        bbox_criterion = torchvision.ops.complete_box_iou_loss
+        bbox_criterion = torchvision.ops.distance_box_iou_loss
         cls_criterion = torch.nn.CrossEntropyLoss()
 
         best_val_loss = float("inf")
-        best_model = copy.deepcopy(self.model.state_dict())
 
         current_patience = 0
         loader_generator = self.get_loaders()
@@ -130,7 +128,6 @@ class ViTTrainer:
             val_loss = float((val_bbox_loss + val_cls_loss).item())
             if val_loss <= best_val_loss:
                 best_val_loss = val_loss
-                best_model = copy.deepcopy(self.model.state_dict())
                 current_patience = 0
             else:
                 current_patience += 1
@@ -149,15 +146,13 @@ class ViTTrainer:
                     f"Early stopping at epoch {epoch + 1} with patience {self.patience}")
                 break
 
-        if best_model:
-            self.model.load_state_dict(best_model)
         if save:
-            torch.save(best_model, model_path +
+            torch.save(self.model.state_dict(), model_path +
                        f"ValLoss_{round(best_val_loss, 3)}" + ".pth")
 
         return best_val_loss
 
-    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.complete_box_iou_loss,
+    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.distance_box_iou_loss,
                     cls_criterion: torch.nn.CrossEntropyLoss,  train_loader: DataLoader,
                     val_loader: DataLoader) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
@@ -167,48 +162,73 @@ class ViTTrainer:
         Args:
             optimizer (torch.optim.Optimizer): The optimizer to use for training.
             bbox_criterion (Callable): The loss function for bounding box regression.
-                                       Expected to take predicted and target boxes.
+                                    Expected to take predicted and target boxes.
             cls_criterion (torch.nn.CrossEntropyLoss): The loss function for classification.
-                                                       Expected to take predicted logits and target classes.
+                                                    Expected to take predicted logits and target classes.
             train_loader (DataLoader): The data loader for the training subset of the current split.
             val_loader (DataLoader): The data loader for the validation subset of the current split.
 
         Returns:
             Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-            Returns the training bbox loss, training classification loss,
-            validation bbox loss, and validation classification loss.
-
-            NOTE: These are the losses from the last batch of the
-            respective loops, not the average over the entire dataset subset.
+            Returns the average training bbox loss, average training classification loss,
+            average validation bbox loss, and average validation classification loss
+            over the entire dataset subset for the split.
         """
         self.model.train()
+
+        running_train_bbox_loss = 0.0
+        running_train_cls_loss = 0.0
+        train_batches = 0
+
         images: torch.Tensor
         labels: LabelType
         bbox: torch.Tensor
         cls: torch.Tensor
+
         for images, labels in train_loader:
             optimizer.zero_grad()
             input_bbox = labels["bbox"].squeeze().to(self.device)
             input_cls = torch.argmax(labels["cls"], dim=1).to(self.device)
+
             images = images.to(self.device)
             bbox, cls = self.model(images)
+
             bbox_loss: torch.Tensor = bbox_criterion(bbox, input_bbox, reduction="mean")
             cls_loss: torch.Tensor = cls_criterion(cls, input_cls)
             loss: torch.Tensor = bbox_loss + cls_loss
+
             loss.backward()
             optimizer.step()
 
+            running_train_bbox_loss += bbox_loss.item()
+            running_train_cls_loss += cls_loss.item()
+            train_batches += 1
+
+        avg_train_bbox_loss = torch.tensor(running_train_bbox_loss / train_batches, device=self.device)
+        avg_train_cls_loss = torch.tensor(running_train_cls_loss / train_batches, device=self.device)
+
         self.model.eval()
-        val_bbox: torch.Tensor
-        val_cls: torch.Tensor
-        for images, labels in val_loader:
-            with torch.no_grad():
+
+        running_val_bbox_loss = 0.0
+        running_val_cls_loss = 0.0
+        val_batches = 0
+
+        with torch.no_grad():
+            for images, labels in val_loader:
                 input_bbox = labels["bbox"].squeeze().to(self.device)
                 input_cls = torch.argmax(labels["cls"], dim=1).to(self.device)
                 images = images.to(self.device)
-                val_bbox, val_cls = self.model(images)
-                val_bbox_loss: torch.Tensor = bbox_criterion(val_bbox, input_bbox, reduction="mean")
-                val_cls_loss: torch.Tensor = cls_criterion(
-                    val_cls, input_cls)
 
-        return bbox_loss, cls_loss, val_bbox_loss, val_cls_loss
+                val_bbox_preds, val_cls_preds = self.model(images)
+
+                val_bbox_loss: torch.Tensor = bbox_criterion(val_bbox_preds, input_bbox, reduction="mean")
+                val_cls_loss: torch.Tensor = cls_criterion(val_cls_preds, input_cls)
+
+                running_val_bbox_loss += val_bbox_loss.item()
+                running_val_cls_loss += val_cls_loss.item()
+                val_batches += 1
+
+        avg_val_bbox_loss = torch.tensor(running_val_bbox_loss / val_batches, device=self.device)
+        avg_val_cls_loss = torch.tensor(running_val_cls_loss / val_batches, device=self.device)
+
+        return avg_train_bbox_loss, avg_train_cls_loss, avg_val_bbox_loss, avg_val_cls_loss
