@@ -36,13 +36,14 @@ def train_vit(n: int = 5) -> None:
     logger = logging.getLogger("ViT Trainer")
 
     for i in range(n):
-        iter_seed = SEED+i
+        iter_seed = SEED + i
         set_seeds(iter_seed)
         logger.info(f"Training with seed {iter_seed}")
 
         model = ViT()
-        train_dataset, val_dataset, _ = get_data_splits(ViTImageDataset("train"),
-                                                        ViTImageDataset("eval"), seed=iter_seed)
+        train_dataset, val_dataset, _ = get_data_splits(
+            ViTImageDataset("train"), ViTImageDataset("eval"), seed=iter_seed
+        )
 
         model.fit(train_dataset, val_dataset)
         model.save(f"/weights/ViT/{iter_seed}")
@@ -66,15 +67,14 @@ def eval_vit(n: int = 5) -> None:
 
     logger = logging.getLogger("ViT Eval")
     for i in range(n):
-        iter_seed = SEED+i
+        iter_seed = SEED + i
         set_seeds(iter_seed)
         logger.info(f"Evaluating with seed {iter_seed}")
 
         model = ViT()
         model.load(f"/weights/ViT/{iter_seed}.pth")
 
-        _, _, test_dataset = get_data_splits(ViTImageDataset("train"),
-                                             ViTImageDataset("eval"), seed=iter_seed)
+        _, _, test_dataset = get_data_splits(ViTImageDataset("train"), ViTImageDataset("eval"), seed=iter_seed)
         x, y, z = load_data_to_mem(test_dataset)
 
         eval_res = Evaluator.eval(model, x, y, z, tag=f"ViT_eval_s{iter_seed}")
@@ -117,25 +117,44 @@ def optimize_hyperparameters(trial_count: int = 10) -> dict[str, float]:
         annealing_rate = trial.suggest_float("annealing_rate", 1e-10, learning_rate, log=True)
         dropout_rate = trial.suggest_float("dropout_rate", 0.01, 0.1, step=0.01)
 
-        train_dataset, val_dataset, _ = get_data_splits(ViTImageDataset("train"),
-                                                        ViTImageDataset("eval"), seed=SEED)
+        train_dataset, val_dataset, _ = get_data_splits(ViTImageDataset("train"), ViTImageDataset("eval"), seed=SEED)
         model = ViT(dp_rate=dropout_rate)
-        trainer = ViTTrainer(model, device=DEVICE, learning_rate=learning_rate, epochs=20,
-                             batch_size=BATCH_SIZE, patience=2, annealing_rate=annealing_rate)
+        trainer = ViTTrainer(
+            model,
+            device=DEVICE,
+            learning_rate=learning_rate,
+            epochs=20,
+            batch_size=BATCH_SIZE,
+            patience=2,
+            annealing_rate=annealing_rate,
+        )
 
-        traind_dl = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,
-                               num_workers=multiprocessing.cpu_count(), pin_memory=DEVICE.type == "cuda")
-        val_dl = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True,
-                            num_workers=multiprocessing.cpu_count(), pin_memory=DEVICE.type == "cuda")
+        traind_dl = DataLoader(
+            train_dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            num_workers=multiprocessing.cpu_count(),
+            pin_memory=DEVICE.type == "cuda",
+        )
+        val_dl = DataLoader(
+            val_dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            num_workers=multiprocessing.cpu_count(),
+            pin_memory=DEVICE.type == "cuda",
+        )
         return float(trainer.train(traind_dl, val_dl))
 
     STUDY_NAME = "vit_hyperparams"
     STORAGE_URL = f"sqlite:////logs/{STUDY_NAME}.db"
 
-    study = optuna.create_study(direction="minimize", load_if_exists=True, study_name=STUDY_NAME,
-                                storage=STORAGE_URL,)
-    study.optimize(objective, n_trials=trial_count,
-                   show_progress_bar=True, gc_after_trial=True, n_jobs=1)
+    study = optuna.create_study(
+        direction="minimize",
+        load_if_exists=True,
+        study_name=STUDY_NAME,
+        storage=STORAGE_URL,
+    )
+    study.optimize(objective, n_trials=trial_count, show_progress_bar=True, gc_after_trial=True, n_jobs=1)
 
     logger = logging.getLogger("HyperparameterOptimizer")
     study_df = study.trials_dataframe()
