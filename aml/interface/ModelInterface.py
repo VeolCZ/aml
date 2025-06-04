@@ -5,7 +5,7 @@ from torch.utils.data import Dataset
 
 class ModelInterface(abc.ABC):
     @abc.abstractmethod
-    def fit(self, train_dataset: Dataset) -> None:
+    def fit(self, train_dataset: Dataset, val_dataset: Dataset) -> None:
         raise NotImplementedError("Not implemented.")
 
     @abc.abstractmethod

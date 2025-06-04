@@ -20,14 +20,14 @@ class CompositeRandomForest(ModelInterface):
         self.classifier = RandomForestClassifierModel()
         self.regressor = RandomForestRegressorModel()
 
-    def fit(self, train_dataset: Dataset) -> None:
+    def fit(self, train_dataset: Dataset, val_dataset: Dataset) -> None:
         """
         Trains both random forests
         Args:
             train_dataset(Dataset): the dataset the forest needs to be trained on.
         """
-        self.classifier.fit(train_dataset)
-        self.regressor.fit(train_dataset)
+        self.classifier.fit(train_dataset, val_dataset)
+        self.regressor.fit(train_dataset, val_dataset)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """

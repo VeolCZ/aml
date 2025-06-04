@@ -1,14 +1,10 @@
 import logging
-import math
 import os
 import torch
 import torchvision
-import multiprocessing
 from ViT.ViT import ViT
-from typing import Generator
-from sklearn.model_selection import RepeatedKFold
-from torch.utils.data import DataLoader, Subset
-from preprocessing.ViTImageDataset import LabelType, ViTImageDataset
+from preprocessing.ViTImageDataset import LabelType
+from torch.utils.data import DataLoader
 
 SEED = int(os.getenv("SEED", "123"))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
@@ -24,7 +20,7 @@ class ViTTrainer:
     (bbox_head) and classification (cls_head).
     """
 
-    def __init__(self, model: ViT, device: torch.device, dataset: ViTImageDataset, learning_rate: float = 0.001,
+    def __init__(self, model: ViT, device: torch.device, learning_rate: float = 0.001,
                  n_splits: int = 5, epochs: int = 5, batch_size: int = BATCH_SIZE, patience: int = 2,
                  annealing_rate: float = 0.000001) -> None:
         """
@@ -47,7 +43,6 @@ class ViTTrainer:
         self.model = model
         self.model.to(device=device)
         self.device = device
-        self.dataset = dataset
         self.learning_rate = learning_rate
         self.n_splits = n_splits
         self.batch_size = batch_size
@@ -56,54 +51,7 @@ class ViTTrainer:
         self.patience = patience
         self.annealing_rate = annealing_rate
 
-    def get_loaders(self) -> Generator[tuple[DataLoader, DataLoader], None, None]:
-        """
-        Generates pairs of training and validation DataLoaders for each split
-        of Repeated K-Fold cross-validation.
-
-        The number of repeats is calculated such that there are at least
-        'epochs' total splits generated. The main training loop in train
-        will consume exactly epochs splits from this generator.
-
-        Yields:
-            Generator[Tuple[DataLoader, DataLoader], None, None]: A generator
-            yielding tuples of (train_loader, val_loader) for each split.
-
-        NOTE: For optimal performance set epochs to be fully divisable by n_splits
-        """
-        kfold = RepeatedKFold(n_splits=self.n_splits, n_repeats=math.ceil(self.epochs/self.n_splits),
-                              random_state=SEED)
-
-        for train_idx, val_idx in kfold.split(self.dataset):
-            train_subset = Subset(self.dataset, train_idx)
-            val_subset = Subset(self.dataset, val_idx)
-            train_loader = DataLoader(train_subset, batch_size=self.batch_size, shuffle=True,
-                                      num_workers=multiprocessing.cpu_count(), pin_memory=self.device.type == "cuda")
-            val_loader = DataLoader(val_subset, batch_size=self.batch_size, shuffle=True,
-                                    num_workers=multiprocessing.cpu_count(), pin_memory=self.device.type == "cuda")
-
-            yield train_loader, val_loader
-
-    def train(self) -> float:
-        """
-        Trains the ViT model using the configured K-Fold cross-validation setup
-        and early stopping.
-
-        Optimizes only the parameters of the classification and bounding box
-        heads of the model.
-
-        Args:
-            model_path (str, optional): The base path to save the best model checkpoint.
-                                        Defaults to "/weights/model".
-            save (bool, optional): Whether to save the best model checkpoint. Defaults to False.
-
-        Returns:
-            float: The best validation loss achieved during training.
-
-        Raises:
-            StopIteration: If the loader generator runs out of splits before
-                           completing the specified number of 'epochs' (splits).
-        """
+    def train(self, train_loader: DataLoader, val_loader: DataLoader) -> float:
         optimizer = torch.optim.AdamW(
             [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()],
             lr=self.learning_rate)
@@ -111,16 +59,13 @@ class ViTTrainer:
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=self.epochs, eta_min=self.annealing_rate)
 
-        bbox_criterion = torchvision.ops.distance_box_iou_loss
+        bbox_criterion = torchvision.ops.complete_box_iou_loss
         cls_criterion = torch.nn.CrossEntropyLoss()
 
         best_val_loss = float("inf")
 
         current_patience = 0
-        loader_generator = self.get_loaders()
         for epoch in range(self.epochs):
-            train_loader, val_loader = next(loader_generator)
-
             bbox_loss, cls_los, val_bbox_loss, val_cls_loss = self.train_epoch(
                 optimizer, bbox_criterion, cls_criterion, train_loader, val_loader)
             scheduler.step()
@@ -148,7 +93,7 @@ class ViTTrainer:
 
         return best_val_loss
 
-    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.distance_box_iou_loss,
+    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.complete_box_iou_loss,
                     cls_criterion: torch.nn.CrossEntropyLoss,  train_loader: DataLoader,
                     val_loader: DataLoader) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """

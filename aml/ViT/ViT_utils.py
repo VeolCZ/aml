@@ -2,12 +2,10 @@ import os
 import optuna
 import logging
 import torch
-import numpy as np
 import multiprocessing
 from ViT.ViT import ViT
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 from util import set_seeds
-from sklearn.model_selection import train_test_split
 from ViT.ViTTrainer import ViTTrainer
 from preprocessing.data_util import get_data_splits
 from evaluator.Evaluator import Evaluator
@@ -34,10 +32,10 @@ def train_vit(n: int = 2) -> None:
         logger.info(f"Training with seed {iter_seed}")
 
         model = ViT()
-        train_dataset, _, _ = get_data_splits(ViTImageDataset("train"),
-                                              ViTImageDataset("eval"), seed=iter_seed)
+        train_dataset, val_dataset, _ = get_data_splits(ViTImageDataset("train"),
+                                                        ViTImageDataset("eval"), seed=iter_seed)
 
-        model.fit(train_dataset)
+        model.fit(train_dataset, val_dataset)
         model.save(f"/weights/ViT/{iter_seed}")
 
 

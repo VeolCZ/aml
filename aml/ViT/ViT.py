@@ -1,8 +1,10 @@
+import multiprocessing
 from preprocessing.ViTImageDataset import ViTImageDataset
 import torch
 import os
 from transformers import ViTForImageClassification
 from interface.ModelInterface import ModelInterface
+from torch.utils.data import DataLoader
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -99,7 +101,7 @@ class ViT(torch.nn.Module, ModelInterface):
         cls = self.cls_head(backbone)
         return bbox, cls
 
-    def fit(self, dataset: ViTImageDataset) -> None:
+    def fit(self, train_dataset: ViTImageDataset, val_dataset: ViTImageDataset) -> None:
         from ViT.ViTTrainer import ViTTrainer  # Import as needed
 
         learning_rate = 1e-3  # 4.5044719925484676e-05
@@ -108,10 +110,14 @@ class ViT(torch.nn.Module, ModelInterface):
         epochs = 10
         patience = 10
 
-        trainer = ViTTrainer(self, DEVICE, dataset,
+        trainer = ViTTrainer(self, DEVICE,
                              epochs=epochs, batch_size=BATCH_SIZE, patience=patience,
                              learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
-        trainer.train()
+        traind_dl = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,
+                               num_workers=multiprocessing.cpu_count(), pin_memory=DEVICE.type == "cuda")
+        val_dl = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True,
+                            num_workers=multiprocessing.cpu_count(), pin_memory=DEVICE.type == "cuda")
+        trainer.train(traind_dl, val_dl)
 
     @torch.inference_mode()
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

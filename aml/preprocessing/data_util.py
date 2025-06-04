@@ -14,7 +14,7 @@ DataType = Union[ViTImageDataset, TreeImageDataset]
 
 
 def get_data_splits(train_data: DataType, test_data: DataType, seed: int = SEED, test_size: float = TEST_SIZE,
-                    val_split: bool = False) -> tuple[Dataset, Dataset, Dataset]:
+                    val_split: bool = True) -> tuple[Dataset, Dataset, Dataset]:
     all_labels = np.array((train_data.get_cls_labels()))
     raw_train_indices, test_indicies, _, _ = train_test_split(
         np.arange(len(train_data)),

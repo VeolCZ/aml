@@ -27,10 +27,10 @@ def train_composite(n: int = 2) -> None:
         logger.info(f"Training with seed {iter_seed}")
 
         model = CompositeRandomForest()
-        train_dataset, _, _ = get_data_splits(TreeImageDataset("train"),
-                                              TreeImageDataset("eval"), seed=iter_seed)
+        train_dataset, val_dataset, _ = get_data_splits(TreeImageDataset("train"),
+                                                        TreeImageDataset("eval"), seed=iter_seed)
 
-        model.fit(train_dataset)
+        model.fit(train_dataset, val_dataset)
         model.save(f"/weights/forest/{iter_seed}")
 
 

@@ -22,7 +22,7 @@ class RandomForestRegressorModel(RandomForest):
                                                random_state=SEED, n_estimators=200, min_samples_split=2,
                                                min_samples_leaf=4, max_depth=40, verbose=2, max_features="sqrt"))
 
-    def fit(self, train_dataset: Dataset) -> None:
+    def fit(self, train_dataset: Dataset, val_dataset: Dataset) -> None:
         """
         Trains the model
         Args:
