@@ -50,7 +50,7 @@ def train_vit() -> None:
     model.fit(train_dataset_subset)
 
 
-def eval_vit() -> None:
+def eval_vit(gaussian_noise_severity:float = 0,tensorboard:bool = True) -> None:
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
@@ -59,7 +59,7 @@ def eval_vit() -> None:
 
     model = ViT()
     model.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
-    eval_dataset = ViTImageDataset(type="eval")
+    eval_dataset = ViTImageDataset(type="eval", eval_gaussian_noise_severity = gaussian_noise_severity)
 
     all_labels = eval_dataset.get_cls_labels()
     _, test_indices, _, _ = train_test_split(
@@ -83,7 +83,7 @@ def eval_vit() -> None:
     y_all_batches: list[torch.Tensor] = []
     z_all_batches: list[torch.Tensor] = []
 
-    for _, (imgs_batch, labels_batch) in enumerate(dataloader):
+    for (imgs_batch, labels_batch) in dataloader:
         x_all_batches.append(imgs_batch)
         y_all_batches.append(labels_batch["cls"])
         z_all_batches.append(labels_batch["bbox"])
@@ -95,17 +95,17 @@ def eval_vit() -> None:
     eval_res = Evaluator.eval(model, x, y, z)
     confusion_matrix = eval_res.confusion_matrix
     image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
-
-    writer = write_summary(run_name="ViT")
-    writer.add_scalar("ViT/Accuracy", eval_res.accuracy, 0)
-    writer.add_scalar("ViT/F1", eval_res.f1_score, 0)
-    writer.add_scalar("ViT/top_k", eval_res.top_3, 0)
-    writer.add_scalar("ViT/top_k", eval_res.top_5, 0)
-    writer.add_scalar("ViT/multiroc", eval_res.multiroc, 0)
-    writer.add_image("ViT/Confusion Matrix", image, 0)
-    writer.add_scalar("ViT/IOU", eval_res.iou, 0)
-    # add training plot here
-    writer.close()
+    if tensorboard:
+        writer = write_summary(run_name="ViT")
+        writer.add_scalar("ViT/Accuracy", eval_res.accuracy, 0)
+        writer.add_scalar("ViT/F1", eval_res.f1_score, 0)
+        writer.add_scalar("ViT/top_k", eval_res.top_3, 0)
+        writer.add_scalar("ViT/top_k", eval_res.top_5, 0)
+        writer.add_scalar("ViT/multiroc", eval_res.multiroc, 0)
+        writer.add_image("ViT/Confusion Matrix", image, 0)
+        writer.add_scalar("ViT/IOU", eval_res.iou, 0)
+        # add training plot here
+        writer.close()
 
     logger = logging.getLogger("Forest Eval")
     logger.info(eval_res)

@@ -64,15 +64,19 @@ class ViTPreprocessPipeline:
                          )
 
     @staticmethod
-    def get_base_eval_transform() -> A.Compose:
+    def get_base_eval_transform(gaussian_noise_severity: float = 0) -> A.Compose:
         """
         Returns the base transformation pipeline for evaluation.
+
+        Args:
+            gaussian_noise_severity (float): the severity of the gaussian noise to be applied on the image
 
         Returns:
             A.Compose: The evaluation transformation pipeline.
         """
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
             A.Resize(height=ViTPreprocessPipeline.img_size, width=ViTPreprocessPipeline.img_size),
+            A.GaussNoise(std_range = [gaussian_noise_severity,gaussian_noise_severity],p=1),
             A.Normalize(),
             ToTensorV2(),
         ]

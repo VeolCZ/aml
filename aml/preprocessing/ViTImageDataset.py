@@ -23,19 +23,20 @@ class ViTImageDataset(Dataset):
         _base_transform (Callable): Transformation pipeline from ViTPreprocessPipeline.
     """
 
-    def __init__(self, type: DatasetType) -> None:
+    def __init__(self, type: DatasetType, eval_gaussian_noise_severity:float = 0) -> None:
         """
         Initializes ViTImageDataset.
 
         Args:
             type (DatasetType): "train" or "eval", determines transformations.
+            eval_gaussian_noise_severity (float): the severity of the gaussian noise to be applied on the eval set
 
         Raises:
             RuntimeError: Invalid dataset type.
         """
         self._labels = pd.read_csv("/data/labels.csv", dtype=d_type, usecols=use_cols)
         if type == "eval":
-            self._base_transform = ViTPreprocessPipeline.get_base_eval_transform()
+            self._base_transform = ViTPreprocessPipeline.get_base_eval_transform(eval_gaussian_noise_severity)
         elif type == "train":
             self._base_transform = ViTPreprocessPipeline.get_base_train_transform()
         else:
