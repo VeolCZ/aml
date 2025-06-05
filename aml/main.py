@@ -4,7 +4,7 @@ import random
 import sys
 import numpy as np
 import torch
-from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit
+from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit, calculate_robustness
 from make_visualisations import make_visualization
 from api.api import serve
 from make_labels import make_labels
@@ -45,6 +45,7 @@ command_map = {
     "--eval_forest": (eval_composite, "Eval random forests"),
     "--serve": (serve, "Serve the models through API"),
     "--streamlit": (run_streamlit, "Run the streamlit application"),
+    "--robustness_vit": (calculate_robustness, "Calculates the robustness of the model"),
 }
 
 
