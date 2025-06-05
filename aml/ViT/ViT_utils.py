@@ -116,7 +116,6 @@ def optimize_hyperparameters(trial_count: int = 10) -> dict[str, float]:
         learning_rate = trial.suggest_float("learning_rate", 1e-6, 1e-3, log=True)
         annealing_rate = trial.suggest_float("annealing_rate", 1e-10, learning_rate, log=True)
         dropout_rate = trial.suggest_float("dropout_rate", 0.01, 0.1, step=0.01)
-
         train_dataset, val_dataset, _ = get_data_splits(ViTImageDataset("train"), ViTImageDataset("eval"), seed=SEED)
         model = ViT(dp_rate=dropout_rate)
         trainer = ViTTrainer(
@@ -162,3 +161,64 @@ def optimize_hyperparameters(trial_count: int = 10) -> dict[str, float]:
     logger.info(study.best_params)
 
     return study.best_params
+
+
+def get_one_robustness_evaluation(gaussian_noise_severity: float) -> None:
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
+
+    model = ViT()
+    model.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
+    robustness_dataset = ViTImageDataset(type="robustness", gaussian_noise_severity=gaussian_noise_severity)
+
+    all_labels = robustness_dataset.get_cls_labels()
+    _, test_indices, _, _ = train_test_split(
+        np.arange(len(robustness_dataset)), all_labels, test_size=TEST_SIZE, stratify=all_labels, random_state=SEED
+    )
+
+    test_dataset = Subset(robustness_dataset, test_indices)
+    dataloader = DataLoader(
+        test_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=multiprocessing.cpu_count(), pin_memory=True
+    )
+
+    x_all_batches: list[torch.Tensor] = []
+    y_all_batches: list[torch.Tensor] = []
+    z_all_batches: list[torch.Tensor] = []
+
+    for imgs_batch, labels_batch in dataloader:
+        x_all_batches.append(imgs_batch)
+        y_all_batches.append(labels_batch["cls"])
+        z_all_batches.append(labels_batch["bbox"])
+
+    x = torch.cat(x_all_batches, dim=0)
+    y = torch.cat(y_all_batches, dim=0)
+    z = torch.cat(z_all_batches, dim=0).squeeze(1)
+
+    eval_res = Evaluator.eval(model, x, y, z)
+
+    confusion_matrix = eval_res.confusion_matrix
+    image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
+
+    writer = write_summary(run_name="ViT robustness")
+    writer.add_scalar("ViT/Accuracy robustness", eval_res.accuracy, gaussian_noise_severity)
+    writer.add_scalar("ViT/F1 robustness", eval_res.f1_score, gaussian_noise_severity)
+    writer.add_scalar("ViT/top_k robustness", eval_res.top_3, gaussian_noise_severity)
+    writer.add_scalar("ViT/top_k robustness", eval_res.top_5, gaussian_noise_severity)
+    writer.add_scalar("ViT/multiroc robustness", eval_res.multiroc, gaussian_noise_severity)
+    writer.add_image("ViT/Confusion Matrix robustness", image, gaussian_noise_severity)
+    writer.add_scalar("ViT/IOU robustness", eval_res.iou, gaussian_noise_severity)
+
+    writer.close()
+
+    logger = logging.getLogger("Forest Eval")
+    logger.info(eval_res)
+
+
+def calculate_robustness(severity_step=0.1):
+    severity = 0
+    while severity <= 1:
+        get_one_robustness_evaluation(severity)
+        severity += severity_step
