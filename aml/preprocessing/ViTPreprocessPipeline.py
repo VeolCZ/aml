@@ -3,12 +3,13 @@ import albumentations as A
 import torch
 import cv2
 from albumentations.pytorch import ToTensorV2
-from typing import Union
+from typing import Union, Literal
 from transformers import ViTImageProcessor
 from transformers.feature_extraction_sequence_utils import BatchFeature
 from numpy.typing import NDArray
 
 SEED = int(os.getenv("SEED", "123"))
+robustness_type = Union[Literal["gaussian"], Literal["saltandpepper"], Literal["motionblur"], Literal["superpixels"]]
 
 
 class ViTPreprocessPipeline:
@@ -17,9 +18,7 @@ class ViTPreprocessPipeline:
     """
 
     # static prop
-    processor = ViTImageProcessor.from_pretrained(
-        "google/vit-base-patch16-224", cache_dir="/data/vit_preprocess"
-    )
+    processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224", cache_dir="/data/vit_preprocess")
     processor.do_rescale = False
     processor.do_resize = False
     processor.do_normalize = False
@@ -108,24 +107,35 @@ class ViTPreprocessPipeline:
         )
 
     @staticmethod
-    def get_base_robustness_transform(gaussian_noise_severity: float = 0) -> A.Compose:
+    def get_base_robustness_transform(severity: float = 0, alteration_type: robustness_type = "gaussian") -> A.Compose:
         """
         Returns the base transformation pipeline for evaluation.
 
         Args:
-            gaussian_noise_severity (float): the severity of the gaussian noise to be applied on the image
+            severity (float): the severity of the noise to be applied on the image
 
         Returns:
             A.Compose: The evaluation transformation pipeline.
         """
+        alteration_method = None
+        match alteration_type:
+            case "gaussian":
+                alteration_method = A.GaussNoise(std_range=[severity, severity], p=1)
+            case "saltandpepper":
+                alteration_method = A.SaltAndPepper(amount=(severity, severity), p=1)
+            case "motionblur":
+                alteration_method = A.MotionBlur(blur_limit=[10 * severity, 10 * severity], p=1)
+            case "superpixels":
+                alteration_method = A.Superpixels(p_replace=[severity, severity], p=1)
+            case _:
+                raise ValueError(f"{alteration_type} is not an accepted alteration type")
+
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
             A.Resize(
                 height=ViTPreprocessPipeline.img_size,
                 width=ViTPreprocessPipeline.img_size,
             ),
-            A.GaussNoise(
-                std_range=[gaussian_noise_severity, gaussian_noise_severity], p=1
-            ),
+            alteration_method,
             A.Normalize(),
             ToTensorV2(),
         ]

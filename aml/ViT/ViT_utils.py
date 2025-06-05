@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Subset
 from sklearn.model_selection import train_test_split
 from ViT.ViTTrainer import ViTTrainer
 from evaluator.Evaluator import Evaluator
-from preprocessing.ViTImageDataset import ViTImageDataset
+from preprocessing.ViTImageDataset import ViTImageDataset, robustness_type
 from tboard.summarywriter import write_summary
 from tboard.plotting import plot_confusion_matrix
 
@@ -167,7 +167,7 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
     return study.best_params
 
 
-def get_one_robustness_evaluation(gaussian_noise_severity: float) -> None:
+def get_one_robustness_evaluation(gaussian_noise_severity: float, alteration_type: robustness_type) -> None:
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
@@ -176,7 +176,9 @@ def get_one_robustness_evaluation(gaussian_noise_severity: float) -> None:
 
     model = ViT()
     model.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
-    robustness_dataset = ViTImageDataset(type="robustness", gaussian_noise_severity=gaussian_noise_severity)
+    robustness_dataset = ViTImageDataset(
+        type="robustness", gaussian_noise_severity=gaussian_noise_severity, alteration_type=alteration_type
+    )
 
     all_labels = robustness_dataset.get_cls_labels()
     _, test_indices, _, _ = train_test_split(
@@ -203,16 +205,12 @@ def get_one_robustness_evaluation(gaussian_noise_severity: float) -> None:
 
     eval_res = Evaluator.eval(model, x, y, z)
 
-    confusion_matrix = eval_res.confusion_matrix
-    image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
-
     writer = write_summary(run_name="ViT robustness")
     writer.add_scalar("ViT/Accuracy robustness", eval_res.accuracy, gaussian_noise_severity)
     writer.add_scalar("ViT/F1 robustness", eval_res.f1_score, gaussian_noise_severity)
     writer.add_scalar("ViT/top_k robustness", eval_res.top_3, gaussian_noise_severity)
     writer.add_scalar("ViT/top_k robustness", eval_res.top_5, gaussian_noise_severity)
     writer.add_scalar("ViT/multiroc robustness", eval_res.multiroc, gaussian_noise_severity)
-    writer.add_image("ViT/Confusion Matrix robustness", image, gaussian_noise_severity)
     writer.add_scalar("ViT/IOU robustness", eval_res.iou, gaussian_noise_severity)
 
     writer.close()
@@ -221,8 +219,8 @@ def get_one_robustness_evaluation(gaussian_noise_severity: float) -> None:
     logger.info(eval_res)
 
 
-def calculate_robustness(severity_step=0.1):
+def calculate_robustness(robustness_type="gaussian", severity_step=0.1):
     severity = 0
     while severity <= 1:
-        get_one_robustness_evaluation(severity)
+        get_one_robustness_evaluation(severity, robustness_type)
         severity += severity_step
