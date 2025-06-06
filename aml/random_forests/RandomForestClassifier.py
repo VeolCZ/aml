@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 from joblib import parallel_backend
 from preprocessing.data_util import load_data_to_mem
 from evaluator.Evaluator import Evaluator
+from tboard.summarywriter import write_summary
 
 SEED = int(os.getenv("SEED", "123"))
 
@@ -27,6 +28,7 @@ class RandomForestClassifierModel(RandomForest):
             train_dataset (Dataset): The dataset used for training the model.
             val_dataset (Dataset): The dataset used for evaluating the model.
         """
+        writer = write_summary(run_name="RandomForestClassifier_Trainer")
         x, y_one_hot, _ = load_data_to_mem(train_dataset)
         y = y_one_hot.argmax(-1)
         self.logger.info("Training started")
@@ -37,11 +39,13 @@ class RandomForestClassifierModel(RandomForest):
         _, pred_cls = self.predict(x)
         train_accuracy = Evaluator.get_accuracy(y_one_hot, pred_cls.argmax(-1))
         self.logger.info(f"Training Accuracy: {train_accuracy:.4f}")
+        writer.add_scalar("train/accuracy", train_accuracy, 0)
 
         x_val, y_val, _ = load_data_to_mem(val_dataset)
         _, val_pred_cls = self.predict(x_val)
         val_accuracy = Evaluator.get_accuracy(y_val, val_pred_cls.argmax(-1))
         self.logger.info(f"Training Accuracy: {val_accuracy:.4f}")
+        writer.add_scalar("val/accuracy", val_accuracy, 0)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """

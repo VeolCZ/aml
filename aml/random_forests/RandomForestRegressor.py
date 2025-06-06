@@ -7,6 +7,7 @@ from evaluator.Evaluator import Evaluator
 from random_forests.RandomForest import RandomForest
 from torch.utils.data import Dataset
 from preprocessing.data_util import load_data_to_mem
+from tboard.summarywriter import write_summary
 
 SEED = int(os.getenv("SEED", "123"))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
@@ -28,6 +29,7 @@ class RandomForestRegressorModel(RandomForest):
             train_dataset (Dataset): The dataset used for training the model.
             val_dataset (Dataset): The dataset used for evaluating the model.
         """
+        writer = write_summary(run_name="RandomForestRegressor_Trainer")
         x, _, z = load_data_to_mem(train_dataset)
         self.logger.info("Training started")
 
@@ -37,11 +39,13 @@ class RandomForestRegressorModel(RandomForest):
         pred_bbox, _ = self.predict(x)
         train_iou = Evaluator.get_IOU(pred_bbox, z)
         self.logger.info(f"Training IOU: {train_iou:.4f}")
+        writer.add_scalar("train/iou", train_iou, 0)
 
         x_val, _, z_val = load_data_to_mem(val_dataset)
         val_pred_bbox, _ = self.predict(x_val)
         val_iou = Evaluator.get_IOU(val_pred_bbox, z_val)
         self.logger.info(f"Validation IOU: {val_iou:.4f}")
+        writer.add_scalar("val/iou", val_iou, 0)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
