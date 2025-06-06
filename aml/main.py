@@ -21,6 +21,9 @@ set_seeds(SEED)
 
 
 def help_func() -> None:
+    """
+    Prints a help message listing all available commands and their descriptions.
+    """
     print("Available commands:")
     for arg, (_, desc) in COMMAND_MAP.items():
         print(f"  {arg}: {desc}")
@@ -42,6 +45,9 @@ COMMAND_MAP = {
 
 
 def main() -> None:
+    """
+    Parses command-line arguments and executes the corresponding function.
+    """
     if len(sys.argv) != 2 or all(arg not in COMMAND_MAP for arg in sys.argv[1:]):
         help_func()
     else:

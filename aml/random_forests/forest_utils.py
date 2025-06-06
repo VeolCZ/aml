@@ -13,6 +13,17 @@ SEED = int(os.getenv("SEED", "123"))
 
 
 def train_composite(n: int = 1) -> None:
+    """
+    Trains one or more Composite Random Forest models.
+
+    This function iterates n times, each time training a new model with a
+    different random seed. Each trained model is saved to the
+    /weights/forest directory, named by its seed.
+
+    Args:
+        n (int): The number of models to train with different seeds.
+    """
+
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
@@ -34,6 +45,16 @@ def train_composite(n: int = 1) -> None:
 
 
 def eval_composite(n: int = 2) -> None:
+    """
+    Evaluates pre-trained Composite Random Forest models.
+
+    For n specified models, this function loads each one, runs predictions
+    on the test set, and logs performance metrics (e.g., accuracy, F1, IOU)
+    and a confusion matrix to TensorBoard.
+
+    Args:
+        n (int): The number of saved models to evaluate.
+    """
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights/forest"), "Please ensure the /weights/forest directory exists"

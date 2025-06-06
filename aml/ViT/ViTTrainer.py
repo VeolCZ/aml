@@ -13,8 +13,7 @@ BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 class ViTTrainer:
     """
     A trainer class for fine-tuning a Vision Transformer (ViT) model for a task
-    involving both bounding box regression and classification using K-Fold
-    cross-validation and early stopping.
+    involving both bounding box regression and classification using early stopping.
 
     Assumes the ViT model has separate heads for bounding box prediction
     (bbox_head) and classification (cls_head).
@@ -29,7 +28,6 @@ class ViTTrainer:
         Args:
             model (ViT): The Vision Transformer model to train.
             device (torch.device): The device to train on (e.g., 'cuda' or 'cpu').
-            dataset (ViTImageDataset): The dataset to use for training and validation.
             learning_rate (float, optional): The initial learning rate for the optimizer. Defaults to 0.001.
             epochs (int, optional): The total number of training epochs (or more accurately,
                                     the number of distinct K-Fold splits to use for training).
@@ -50,6 +48,16 @@ class ViTTrainer:
         self.annealing_rate = annealing_rate
 
     def train(self, train_loader: DataLoader, val_loader: DataLoader) -> float:
+        """
+        Executes the main training and validation loop for the model.
+
+        Args:
+            train_loader (DataLoader): The data loader for the training set.
+            val_loader (DataLoader): The data loader for the validation set.
+
+        Returns:
+            float: The best validation loss achieved during training.
+        """
         optimizer = torch.optim.AdamW(
             [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()],
             lr=self.learning_rate)

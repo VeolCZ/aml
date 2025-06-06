@@ -40,6 +40,9 @@ def parse_labels(base_path: str) -> pd.DataFrame:
 
 
 def make_labels() -> None:
+    """
+    Creates and saves a labels.csv file in the /data directory.
+    """
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
 
     df = parse_labels("/data/CUB_200_2011")
@@ -47,6 +50,9 @@ def make_labels() -> None:
 
 
 def get_classes() -> dict[int, str]:
+    """
+    Returns a dictionary mapping class IDs to class names.
+    """
     assert os.path.exists("/data/CUB_200_2011/classes.txt"), "Please ensure the dataset is properly \
          extracted into /data"
 

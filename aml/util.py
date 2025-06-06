@@ -4,6 +4,12 @@ import torch
 
 
 def set_seeds(seed: int) -> None:
+    """
+    Sets seeds for random, numpy, and torch to ensure reproducibility.
+
+    Args:
+        seed (int): The seed to use for all random number generators.
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)

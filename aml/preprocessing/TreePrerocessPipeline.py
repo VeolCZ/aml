@@ -100,6 +100,18 @@ class TreePrerocessPipeline:
 
     @staticmethod
     def tree_predict_transform(image: NDArray) -> torch.Tensor:
+        """
+        Prepares a raw image for prediction with a tree-based model.
+
+        This applies evaluation resizing and extracts HOG features from the
+        image, returning a batched feature vector.
+
+        Args:
+            image (NDArray): The raw input image as a NumPy array.
+
+        Returns:
+            torch.Tensor: A 2D tensor of HOG features.
+        """
         transform = TreePrerocessPipeline.get_base_eval_transform()
         raw_img = transform(
             image=image,

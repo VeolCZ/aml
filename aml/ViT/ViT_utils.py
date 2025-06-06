@@ -21,6 +21,12 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def train_vit(n: int = 1) -> None:
+    """
+    Trains one or more Vision Transformer (ViT) models.
+
+    Args:
+        n (int): The number of models to train with different seeds.
+    """
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
@@ -41,6 +47,12 @@ def train_vit(n: int = 1) -> None:
 
 
 def eval_vit(n: int = 1) -> None:
+    """
+    Evaluates pre-trained Vision Transformer (ViT) models.
+
+    Args:
+        n (int): The number of saved models to evaluate.
+    """
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights/ViT"), "Please ensure the /weights/ViT directory exists"

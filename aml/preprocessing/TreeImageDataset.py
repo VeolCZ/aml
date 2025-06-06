@@ -119,4 +119,11 @@ class TreeImageDataset(Dataset):
         return image_features, labels
 
     def get_cls_labels(self) -> list[int]:
+        """
+        Returns a list of all class labels in the dataset.
+
+        Returns:
+            list[int]: A list containing the integer class ID for each sample
+                in the dataset.
+        """
         return [int(label) for label in self._labels["class_id"]]

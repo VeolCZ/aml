@@ -13,10 +13,6 @@ BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 
 
 class RandomForestRegressorModel(RandomForest):
-    """
-    Random Forest model for classification tasks.
-    Inherits from the abstract base RandomForest class.
-    """
 
     def __init__(self) -> None:
         super().__init__(RandomForestRegressor(n_jobs=-1,
@@ -26,9 +22,11 @@ class RandomForestRegressorModel(RandomForest):
 
     def fit(self, train_dataset: Dataset, val_dataset: Dataset) -> None:
         """
-        Trains the model
+        Fits the regressor on the training data and evaluates on validation data.
+
         Args:
-            train_dataset(Dataset): the dataset the forest needs to be trained on.
+            train_dataset (Dataset): The dataset used for training the model.
+            val_dataset (Dataset): The dataset used for evaluating the model.
         """
         x, _, z = load_data_to_mem(train_dataset)
         self.logger.info("Training started")
@@ -47,12 +45,15 @@ class RandomForestRegressorModel(RandomForest):
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Makes a prediction from the model(bounding box)
+        Predicts bounding box coordinates for the given input data.
+
         Args:
-            data(torch:Tensor): image in the form of a tensor.
+            data (torch.Tensor): The input data for which to make predictions.
+
         Returns:
-            prediction(tuple(torch.Tensor,torch.Tensor)): first tensor contains the boundingbox prediction
-                the second tensor is empty
+            tuple[torch.Tensor, torch.Tensor]: A tuple where the first element
+                contains the predicted bounding boxes and the second is a
+                placeholder tensor.
         """
         bbox = self.model.predict(data)
         return torch.tensor(bbox), torch.empty((1))

@@ -19,6 +19,23 @@ DataType = Union[ViTImageDataset, TreeImageDataset]
 
 def get_data_splits(train_data: DataType, test_data: DataType, seed: int = SEED, test_size: float = TEST_SIZE,
                     val_split: bool = True) -> tuple[Dataset, Dataset, Dataset]:
+    """
+    Splits datasets into training, validation, and test sets.
+
+    Performs a stratified split on the dataset indices to ensure class
+    distribution is maintained across the splits.
+
+    Args:
+        train_data (DataType): The dataset to source the training and validation splits from.
+        test_data (DataType): The dataset to source the test split from.
+        seed (int): The random seed for shuffling and splitting.
+        test_size (float): The proportion of data for the test/validation splits.
+        val_split (bool): If True, a validation set is created from the training data.
+
+    Returns:
+        tuple[Dataset, Dataset, Dataset]: A tuple containing Subset objects for
+            the train, validation, and test sets.
+    """
     all_labels = np.array((train_data.get_cls_labels()), dtype=np.int16)
     raw_train_indices, test_indicies = train_test_split(
         np.arange(len(train_data)),
@@ -43,6 +60,19 @@ def get_data_splits(train_data: DataType, test_data: DataType, seed: int = SEED,
 
 
 def load_data_to_mem(dataset: DataType) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Loads an entire dataset into memory as tensors.
+
+    Uses a DataLoader to iterate through all data points in a dataset and
+    concatenates them into single tensors for images, labels, and bounding boxes.
+
+    Args:
+        dataset (DataType): The PyTorch Dataset to load into memory.
+
+    Returns:
+        tuple[torch.Tensor, torch.Tensor, torch.Tensor]: A tuple containing
+            tensors for images (x), class labels (y), and bounding boxes (z).
+    """
     dataloader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE,

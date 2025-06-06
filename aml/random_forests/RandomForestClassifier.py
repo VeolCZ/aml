@@ -1,7 +1,6 @@
 import logging
 import torch
 import os
-from sklearn.metrics import accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 from random_forests.RandomForest import RandomForest
 from torch.utils.data import Dataset
@@ -13,10 +12,6 @@ SEED = int(os.getenv("SEED", "123"))
 
 
 class RandomForestClassifierModel(RandomForest):
-    """
-    Random Forest model for classification tasks.
-    Inherits from the abstract base RandomForest class.
-    """
 
     def __init__(self) -> None:
         super().__init__(RandomForestClassifier(n_jobs=-1,
@@ -26,9 +21,11 @@ class RandomForestClassifierModel(RandomForest):
 
     def fit(self, train_dataset: Dataset, val_dataset: Dataset) -> None:
         """
-        Trains the model
+        Fits the classifier on the training data and evaluates on validation data.
+
         Args:
-            train_dataset(Dataset): the dataset the forest needs to be trained on.
+            train_dataset (Dataset): The dataset used for training the model.
+            val_dataset (Dataset): The dataset used for evaluating the model.
         """
         x, y_one_hot, _ = load_data_to_mem(train_dataset)
         y = y_one_hot.argmax(-1)
@@ -48,12 +45,15 @@ class RandomForestClassifierModel(RandomForest):
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Makes a prediction from the model(prbability distribution of classes)
+        Predicts class probabilities for the given input data.
+
         Args:
-            data(torch:Tensor): image in the form of a tensor.
+            data (torch.Tensor): The input data for which to make predictions.
+
         Returns:
-            prediction(tuple(torch.Tensor,torch.Tensor)): first tensor is empty
-                the second tensor contains the distribution of probability of classes.
+            tuple[torch.Tensor, torch.Tensor]: A tuple where the first element
+                is a placeholder tensor and the second contains the predicted
+                class probabilities.
         """
         cls = self.model.predict_proba(data)
 
