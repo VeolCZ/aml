@@ -79,7 +79,6 @@ class ViTImageDataset(Dataset):
             "cls": one_hot_cls
         }
 
-        # print(transformed_image.type(dtype=torch.float16).dtype)
         return transformed_image, labels
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, LabelType]:

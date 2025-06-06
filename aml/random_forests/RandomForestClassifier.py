@@ -1,14 +1,15 @@
-import multiprocessing
-import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+import logging
 import torch
 import os
+from sklearn.metrics import accuracy_score
+from sklearn.ensemble import RandomForestClassifier
 from random_forests.RandomForest import RandomForest
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from joblib import parallel_backend
+from preprocessing.data_util import load_data_to_mem
+from evaluator.Evaluator import Evaluator
 
 SEED = int(os.getenv("SEED", "123"))
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 
 
 class RandomForestClassifierModel(RandomForest):
@@ -20,7 +21,8 @@ class RandomForestClassifierModel(RandomForest):
     def __init__(self) -> None:
         super().__init__(RandomForestClassifier(n_jobs=-1,
                                                 random_state=SEED, n_estimators=200, min_samples_split=2,
-                                                min_samples_leaf=4, max_depth=40, verbose=2, max_features="sqrt"))
+                                                min_samples_leaf=4, max_depth=40, verbose=0, max_features="sqrt"))
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def fit(self, train_dataset: Dataset, val_dataset: Dataset) -> None:
         """
@@ -28,23 +30,21 @@ class RandomForestClassifierModel(RandomForest):
         Args:
             train_dataset(Dataset): the dataset the forest needs to be trained on.
         """
-        x_train, y_train = [], []
-        dataloader = DataLoader(
-            train_dataset,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            num_workers=multiprocessing.cpu_count(),
-        )
-
-        for _, (imgs, labels) in enumerate(dataloader):
-            x_train.append(imgs)
-            y_train.append(np.array([label for label in labels["cls"]]))
-
-        x_train_ds = np.concatenate(x_train, axis=0)
-        y_train_ds = np.concatenate(y_train, axis=0)
+        x, y_one_hot, _ = load_data_to_mem(train_dataset)
+        y = y_one_hot.argmax(-1)
+        self.logger.info("Training started")
 
         with parallel_backend("loky", n_jobs=-1):
-            self.model.fit(x_train_ds, y_train_ds)
+            self.model.fit(x, y)
+
+        _, pred_cls = self.predict(x)
+        train_accuracy = Evaluator.get_accuracy(y_one_hot, pred_cls.argmax(-1))
+        self.logger.info(f"Training Accuracy: {train_accuracy:.4f}")
+
+        x_val, y_val, _ = load_data_to_mem(val_dataset)
+        _, val_pred_cls = self.predict(x_val)
+        val_accuracy = Evaluator.get_accuracy(y_val, val_pred_cls.argmax(-1))
+        self.logger.info(f"Training Accuracy: {val_accuracy:.4f}")
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """

@@ -21,7 +21,7 @@ class ViTTrainer:
     """
 
     def __init__(self, model: ViT, device: torch.device, learning_rate: float = 0.001,
-                 n_splits: int = 5, epochs: int = 5, batch_size: int = BATCH_SIZE, patience: int = 2,
+                 epochs: int = 5, batch_size: int = BATCH_SIZE, patience: int = 2,
                  annealing_rate: float = 0.000001) -> None:
         """
         Initializes the ViTTrainer.
@@ -31,7 +31,6 @@ class ViTTrainer:
             device (torch.device): The device to train on (e.g., 'cuda' or 'cpu').
             dataset (ViTImageDataset): The dataset to use for training and validation.
             learning_rate (float, optional): The initial learning rate for the optimizer. Defaults to 0.001.
-            n_splits (int, optional): The number of splits for K-Fold cross-validation. Defaults to 5.
             epochs (int, optional): The total number of training epochs (or more accurately,
                                     the number of distinct K-Fold splits to use for training).
                                     Defaults to 5.
@@ -44,7 +43,6 @@ class ViTTrainer:
         self.model.to(device=device)
         self.device = device
         self.learning_rate = learning_rate
-        self.n_splits = n_splits
         self.batch_size = batch_size
         self.epochs = epochs
         self._logger = logging.getLogger(self.__class__.__name__)

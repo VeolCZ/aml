@@ -12,6 +12,7 @@ from evaluator.Evaluator import Evaluator
 from preprocessing.ViTImageDataset import ViTImageDataset
 from tboard.summarywriter import write_summary
 from tboard.plotting import plot_confusion_matrix
+from preprocessing.data_util import load_data_to_mem
 
 SEED = int(os.getenv("SEED", "123"))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
@@ -19,7 +20,7 @@ TEST_SIZE = float(os.getenv("TEST_SIZE", "0.1"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def train_vit(n: int = 2) -> None:
+def train_vit(n: int = 1) -> None:
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
@@ -39,7 +40,7 @@ def train_vit(n: int = 2) -> None:
         model.save(f"/weights/ViT/{iter_seed}")
 
 
-def eval_vit(n: int = 2) -> None:
+def eval_vit(n: int = 1) -> None:
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights/ViT"), "Please ensure the /weights/ViT directory exists"
@@ -56,25 +57,7 @@ def eval_vit(n: int = 2) -> None:
 
         _, _, test_dataset = get_data_splits(ViTImageDataset("train"),
                                              ViTImageDataset("eval"), seed=iter_seed)
-        dataloader = DataLoader(
-            test_dataset,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            num_workers=multiprocessing.cpu_count(),
-            pin_memory=True
-        )
-        x_all_batches: list[torch.Tensor] = []
-        y_all_batches: list[torch.Tensor] = []
-        z_all_batches: list[torch.Tensor] = []
-
-        for _, (imgs_batch, labels_batch) in enumerate(dataloader):
-            x_all_batches.append(imgs_batch)
-            y_all_batches.append(labels_batch["cls"])
-            z_all_batches.append(labels_batch["bbox"])
-
-        x = torch.cat(x_all_batches, dim=0)
-        y = torch.cat(y_all_batches, dim=0)
-        z = torch.cat(z_all_batches, dim=0).squeeze(1)
+        x, y, z = load_data_to_mem(test_dataset)
 
         eval_res = Evaluator.eval(model, x, y, z)
         confusion_matrix = eval_res.confusion_matrix
@@ -94,7 +77,7 @@ def eval_vit(n: int = 2) -> None:
         logger.info(eval_res)
 
 
-def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
+def optimize_hyperparameters(trial_count: int = 5) -> dict[str, float]:
     """
     Optimizes hyperparameters for the ViT model using Optuna.
 
@@ -126,16 +109,21 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
             float: The objective value to minimize (e.g., loss).
                    The ViTTrainer.train() method is expected to return this.
         """
-        number_of_folds = trial.suggest_int("n_of_folds", 8, 20, step=2)
-        learning_rate = trial.suggest_float("learning_rate", 1e-5, 1, log=True)
-        annealing_rate = trial.suggest_float("annealing_rate", 1e-8, learning_rate, log=True)
+        learning_rate = trial.suggest_float("learning_rate", 1e-6, 1e-3, log=True)
+        annealing_rate = trial.suggest_float("annealing_rate", 1e-10, learning_rate, log=True)
+        dropout_rate = trial.suggest_float("dropout_rate", 0.01, 0.1, step=0.01)
 
-        model = ViT()
-        trainer = ViTTrainer(model, device=DEVICE, dataset=ViTImageDataset(type="train"),
-                             learning_rate=learning_rate, n_splits=number_of_folds, epochs=20,
-                             batch_size=BATCH_SIZE,
-                             patience=3, annealing_rate=annealing_rate)
-        return float(trainer.train())
+        train_dataset, val_dataset, _ = get_data_splits(ViTImageDataset("train"),
+                                                        ViTImageDataset("eval"), seed=SEED)
+        model = ViT(dp_rate=dropout_rate)
+        trainer = ViTTrainer(model, device=DEVICE, learning_rate=learning_rate, epochs=20,
+                             batch_size=BATCH_SIZE, patience=2, annealing_rate=annealing_rate)
+
+        traind_dl = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,
+                               num_workers=multiprocessing.cpu_count(), pin_memory=DEVICE.type == "cuda")
+        val_dl = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True,
+                            num_workers=multiprocessing.cpu_count(), pin_memory=DEVICE.type == "cuda")
+        return float(trainer.train(traind_dl, val_dl))
 
     STUDY_NAME = "vit_hyperparams"
     STORAGE_URL = f"sqlite:////logs/{STUDY_NAME}.db"

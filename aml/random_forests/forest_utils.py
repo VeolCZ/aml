@@ -1,11 +1,10 @@
 import logging
 import os
-import torch
 from util import set_seeds
-from preprocessing.data_util import get_data_splits
+from preprocessing.data_util import get_data_splits, load_data_to_mem
 from random_forests.CompositeRandomForest import CompositeRandomForest
 from evaluator.Evaluator import Evaluator
-from preprocessing.TreeImageDataset import TreeImageDataset, TreePrerocessPipeline
+from preprocessing.TreeImageDataset import TreeImageDataset
 from tboard.plotting import plot_confusion_matrix
 from tboard.summarywriter import write_summary
 
@@ -13,7 +12,7 @@ from tboard.summarywriter import write_summary
 SEED = int(os.getenv("SEED", "123"))
 
 
-def train_composite(n: int = 2) -> None:
+def train_composite(n: int = 1) -> None:
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
@@ -50,22 +49,10 @@ def eval_composite(n: int = 2) -> None:
         model = CompositeRandomForest()
         model.load(f"/weights/forest/{iter_seed}")
 
+        test_dataset: TreeImageDataset
         _, _, test_dataset = get_data_splits(TreeImageDataset("train"),
                                              TreeImageDataset("eval"), seed=iter_seed)
-        x_test: list[torch.Tensor] = []
-        y_test: list[torch.Tensor] = []
-        z_test: list[torch.Tensor] = []
-
-        for img, label in iter(test_dataset):
-            x_test.append(img)
-            one_hot_cls = torch.zeros((TreePrerocessPipeline.img_size), dtype=torch.float)
-            one_hot_cls[label["cls"]] = 1.0
-            y_test.append(one_hot_cls)
-            z_test.append(label["bbox"])
-
-        x = torch.stack(x_test, dim=0)
-        y = torch.stack(y_test, dim=0)
-        z = torch.stack(z_test, dim=0).squeeze(1)
+        x, y, z = load_data_to_mem(test_dataset)
 
         eval_res = Evaluator.eval(model, x, y, z)
         confusion_matrix = eval_res.confusion_matrix

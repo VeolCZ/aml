@@ -106,13 +106,12 @@ class ViT(torch.nn.Module, ModelInterface):
 
         learning_rate = 1e-3  # 4.5044719925484676e-05
         annealing_rate = 1e-5  # 2.9188464128352595e-08
-        n_of_folds = 5
         epochs = 10
         patience = 10
 
         trainer = ViTTrainer(self, DEVICE,
                              epochs=epochs, batch_size=BATCH_SIZE, patience=patience,
-                             learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
+                             learning_rate=learning_rate, annealing_rate=annealing_rate)
         traind_dl = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,
                                num_workers=multiprocessing.cpu_count(), pin_memory=DEVICE.type == "cuda")
         val_dl = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True,
