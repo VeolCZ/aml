@@ -3,6 +3,7 @@ import optuna
 import logging
 import torch
 import multiprocessing
+import gc
 from ViT.ViT import ViT
 from torch.utils.data import DataLoader
 from util import set_seeds
@@ -20,7 +21,7 @@ TEST_SIZE = float(os.getenv("TEST_SIZE", "0.1"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def train_vit(n: int = 1) -> None:
+def train_vit(n: int = 5) -> None:
     """
     Trains one or more Vision Transformer (ViT) models.
 
@@ -45,8 +46,12 @@ def train_vit(n: int = 1) -> None:
         model.fit(train_dataset, val_dataset)
         model.save(f"/weights/ViT/{iter_seed}")
 
+        del model, train_dataset, val_dataset
+        gc.collect()
+        torch.cuda.empty_cache()
 
-def eval_vit(n: int = 1) -> None:
+
+def eval_vit(n: int = 5) -> None:
     """
     Evaluates pre-trained Vision Transformer (ViT) models.
 
@@ -75,21 +80,29 @@ def eval_vit(n: int = 1) -> None:
         confusion_matrix = eval_res.confusion_matrix
         image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
 
-        writer = write_summary(run_name="ViT")
-        writer.add_scalar("ViT/Accuracy", eval_res.accuracy, iter_seed)
-        writer.add_scalar("ViT/F1", eval_res.f1_score, iter_seed)
-        writer.add_scalar("ViT/top_k", eval_res.top_3, iter_seed)
-        writer.add_scalar("ViT/top_k", eval_res.top_5, iter_seed)
-        writer.add_scalar("ViT/multiroc", eval_res.multiroc, iter_seed)
+        writer = write_summary(run_name=f"ViT_eval_s{iter_seed}")
         writer.add_image("ViT/Confusion Matrix", image, iter_seed)
-        writer.add_scalar("ViT/IOU", eval_res.iou, iter_seed)
-        # add training plot here
+        hparams = {
+            "seed": iter_seed
+        }
+
+        metrics = {
+            "accuracy": eval_res.accuracy,
+            "f1_score": eval_res.f1_score,
+            "auroc": eval_res.multiroc,
+            "top_3_accuracy": eval_res.top_3,
+            "top_5_accuracy": eval_res.top_5,
+            "iou": eval_res.iou,
+            "random_iou": eval_res.random_iou
+        }
+
+        writer.add_hparams(hparams, metrics, run_name=f"eval_{iter_seed}")
         writer.close()
 
         logger.info(eval_res)
 
 
-def optimize_hyperparameters(trial_count: int = 5) -> dict[str, float]:
+def optimize_hyperparameters(trial_count: int = 10) -> dict[str, float]:
     """
     Optimizes hyperparameters for the ViT model using Optuna.
 
@@ -98,7 +111,7 @@ def optimize_hyperparameters(trial_count: int = 5) -> dict[str, float]:
 
     Args:
         trial_count (int, optional): The number of optimization trials to run.
-                                     Defaults to 30.
+                                     Defaults to 10.
 
     Returns:
         dict[str, float | int]: A dictionary containing the best hyperparameters

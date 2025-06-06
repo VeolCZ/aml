@@ -104,10 +104,10 @@ class ViT(torch.nn.Module, ModelInterface):
     def fit(self, train_dataset: ViTImageDataset, val_dataset: ViTImageDataset) -> None:
         from ViT.ViTTrainer import ViTTrainer  # Import as needed
 
-        learning_rate = 1e-3  # 4.5044719925484676e-05
-        annealing_rate = 1e-5  # 2.9188464128352595e-08
-        epochs = 10
-        patience = 10
+        learning_rate = 4.5044719925484676e-04
+        annealing_rate = 2.9188464128352595e-06
+        epochs = 15
+        patience = 4
 
         trainer = ViTTrainer(self, DEVICE,
                              epochs=epochs, batch_size=BATCH_SIZE, patience=patience,
@@ -149,9 +149,8 @@ class ViT(torch.nn.Module, ModelInterface):
     def save(self, path: str) -> None:
         """
         Saves both random forests
+
         Args:
             path(str): the path to the directory where the forests need to be saved.
         """
-        if not os.path.exists(path):
-            os.makedirs(path, exist_ok=True)
         torch.save(self.state_dict(), path + ".pth")

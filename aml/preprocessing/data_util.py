@@ -36,27 +36,33 @@ def get_data_splits(train_data: DataType, test_data: DataType, seed: int = SEED,
         tuple[Dataset, Dataset, Dataset]: A tuple containing Subset objects for
             the train, validation, and test sets.
     """
-    all_labels = np.array((train_data.get_cls_labels()), dtype=np.int16)
-    raw_train_indices, test_indicies = train_test_split(
-        np.arange(len(train_data)),
+    all_labels = np.array(train_data.get_cls_labels(), dtype=np.int16)
+    all_indices = np.arange(len(all_labels))
+
+    train_val_indices, test_indices = train_test_split(
+        all_indices,
         test_size=test_size,
         stratify=all_labels,
         random_state=seed,
         shuffle=True
     )
-    if val_split:
-        train_labels = all_labels[raw_train_indices]
-        train_indices, val_indicies = train_test_split(
-            np.arange(len(raw_train_indices)),
-            test_size=test_size,
-            stratify=train_labels,
-            random_state=seed,
-            shuffle=True
-        )
 
-        return Subset(train_data, train_indices), Subset(test_data, val_indicies), Subset(test_data, test_indicies)
-    else:
-        return Subset(train_data, raw_train_indices), Subset(test_data, []), Subset(test_data, test_indicies)
+    if not val_split:
+        return Subset(train_data, train_val_indices), Subset(test_data, []), Subset(test_data, test_indices)
+
+    train_val_labels = all_labels[train_val_indices]
+
+    val_proportion = test_size / (1 - test_size)
+
+    train_indices, val_indices = train_test_split(
+        train_val_indices,
+        test_size=val_proportion,
+        stratify=train_val_labels,
+        random_state=seed,
+        shuffle=True
+    )
+
+    return Subset(train_data, train_indices), Subset(test_data, val_indices), Subset(test_data, test_indices)
 
 
 def load_data_to_mem(dataset: DataType) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:

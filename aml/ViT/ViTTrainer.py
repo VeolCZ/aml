@@ -67,7 +67,7 @@ class ViTTrainer:
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=self.epochs, eta_min=self.annealing_rate)
 
-        bbox_criterion = torchvision.ops.complete_box_iou_loss
+        bbox_criterion = torchvision.ops.distance_box_iou_loss
         cls_criterion = torch.nn.CrossEntropyLoss()
 
         best_val_loss = float("inf")
@@ -105,7 +105,7 @@ class ViTTrainer:
 
         return best_val_loss
 
-    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.complete_box_iou_loss,
+    def train_epoch(self, optimizer: torch.optim.AdamW,  bbox_criterion: torchvision.ops.distance_box_iou_loss,
                     cls_criterion: torch.nn.CrossEntropyLoss,  train_loader: DataLoader,
                     val_loader: DataLoader) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
