@@ -5,6 +5,7 @@ import torchvision
 from ViT.ViT import ViT
 from preprocessing.ViTImageDataset import LabelType
 from torch.utils.data import DataLoader
+from tboard.summarywriter import write_summary
 
 SEED = int(os.getenv("SEED", "123"))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
@@ -58,6 +59,7 @@ class ViTTrainer:
         Returns:
             float: The best validation loss achieved during training.
         """
+        writer = write_summary(run_name="ViT_Trainer")
         optimizer = torch.optim.AdamW(
             [p for p in self.model.cls_head.parameters()] + [p for p in self.model.bbox_head.parameters()],
             lr=self.learning_rate)
@@ -74,9 +76,13 @@ class ViTTrainer:
         for epoch in range(self.epochs):
             bbox_loss, cls_los, val_bbox_loss, val_cls_loss = self.train_epoch(
                 optimizer, bbox_criterion, cls_criterion, train_loader, val_loader)
+            writer.add_scalar("Train/BBox Loss", bbox_loss.item(), epoch)
+            writer.add_scalar("Train/Cls Loss", cls_los.item(), epoch)
             scheduler.step()
 
             val_loss = float((val_bbox_loss + val_cls_loss).item())
+            writer.add_scalar("Val/BBox Loss", bbox_loss.item(), epoch)
+            writer.add_scalar("Val/Cls Loss", cls_los.item(), epoch)
             if val_loss <= best_val_loss:
                 best_val_loss = val_loss
                 current_patience = 0

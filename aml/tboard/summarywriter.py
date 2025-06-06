@@ -1,4 +1,5 @@
 from torch.utils.tensorboard import SummaryWriter
+import datetime
 import os
 
 
@@ -11,6 +12,6 @@ def write_summary(run_name: str, base_log_dir: str = "/logs/tb") -> SummaryWrite
     Returns
         summarywriter(SummaryWriter): an instance of the SummaryWriter class.
     """
-    marker = "thing"
-    log_dir = os.path.join(base_log_dir, f"{run_name}_{marker}")
+    date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_dir = os.path.join(base_log_dir, f"{run_name}_{date}")
     return SummaryWriter(log_dir=log_dir)
