@@ -11,7 +11,7 @@ from streamlit_app.run_streamlit import run_streamlit
 
 logging.basicConfig(
     level="INFO",
-    # filename="/logs/logs.log",  # Enable for preserved logs
+    filename="/logs/logs.log",  # Enable for preserved logs
     format="%(asctime)s %(levelname)s %(module)s: %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )

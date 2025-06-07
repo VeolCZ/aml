@@ -11,8 +11,6 @@ from ViT.ViTTrainer import ViTTrainer
 from preprocessing.data_util import get_data_splits
 from evaluator.Evaluator import Evaluator
 from preprocessing.ViTImageDataset import ViTImageDataset
-from tboard.summarywriter import write_summary
-from tboard.plotting import plot_confusion_matrix
 from preprocessing.data_util import load_data_to_mem
 
 SEED = int(os.getenv("SEED", "123"))
@@ -33,7 +31,10 @@ def train_vit(n: int = 5) -> None:
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
 
+    if not os.path.exists("/weights/ViT"):
+        os.makedirs("/weights/ViT", exist_ok=True)
     logger = logging.getLogger("ViT Trainer")
+
     for i in range(n):
         iter_seed = SEED+i
         set_seeds(iter_seed)
@@ -76,29 +77,7 @@ def eval_vit(n: int = 5) -> None:
                                              ViTImageDataset("eval"), seed=iter_seed)
         x, y, z = load_data_to_mem(test_dataset)
 
-        eval_res = Evaluator.eval(model, x, y, z)
-        confusion_matrix = eval_res.confusion_matrix
-        image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
-
-        writer = write_summary(run_name=f"ViT_eval_s{iter_seed}")
-        writer.add_image("ViT/Confusion Matrix", image, iter_seed)
-        hparams = {
-            "seed": iter_seed
-        }
-
-        metrics = {
-            "accuracy": eval_res.accuracy,
-            "f1_score": eval_res.f1_score,
-            "auroc": eval_res.multiroc,
-            "top_3_accuracy": eval_res.top_3,
-            "top_5_accuracy": eval_res.top_5,
-            "iou": eval_res.iou,
-            "random_iou": eval_res.random_iou
-        }
-
-        writer.add_hparams(hparams, metrics, run_name=f"eval_{iter_seed}")
-        writer.close()
-
+        eval_res = Evaluator.eval(model, x, y, z, tag=f"ViT_eval_s{iter_seed}")
         logger.info(eval_res)
 
 

@@ -106,8 +106,8 @@ class ViT(torch.nn.Module, ModelInterface):
 
         learning_rate = 4.5044719925484676e-04
         annealing_rate = 2.9188464128352595e-06
-        epochs = 15
-        patience = 4
+        epochs = 20
+        patience = 10
 
         trainer = ViTTrainer(self, DEVICE,
                              epochs=epochs, batch_size=BATCH_SIZE, patience=patience,

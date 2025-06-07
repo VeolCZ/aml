@@ -52,11 +52,9 @@ def get_data_splits(train_data: DataType, test_data: DataType, seed: int = SEED,
 
     train_val_labels = all_labels[train_val_indices]
 
-    val_proportion = test_size / (1 - test_size)
-
     train_indices, val_indices = train_test_split(
         train_val_indices,
-        test_size=val_proportion,
+        test_size=test_size,
         stratify=train_val_labels,
         random_state=seed,
         shuffle=True
