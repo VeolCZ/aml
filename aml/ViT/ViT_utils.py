@@ -216,8 +216,8 @@ def get_one_robustness_evaluation(gaussian_noise_severity: float, alteration_typ
     logger.info(eval_res)
 
 
-def calculate_robustness(robustness_type="gaussian", severity_step=0.1):
+def calculate_robustness(distortion_type:robustness_type="gaussian", severity_step:float=0.1):
     severity = 0
     while severity <= 1:
-        get_one_robustness_evaluation(severity, robustness_type)
+        get_one_robustness_evaluation(severity, distortion_type)
         severity += severity_step
