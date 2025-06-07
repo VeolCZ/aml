@@ -44,7 +44,7 @@ class RandomForestClassifierModel(RandomForest):
         x_val, y_val, _ = load_data_to_mem(val_dataset)
         _, val_pred_cls = self.predict(x_val)
         val_accuracy = Evaluator.get_accuracy(y_val, val_pred_cls.argmax(-1))
-        self.logger.info(f"Training Accuracy: {val_accuracy:.4f}")
+        self.logger.info(f"Validation Accuracy: {val_accuracy:.4f}")
         writer.add_scalar("val/accuracy", val_accuracy, 0)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:

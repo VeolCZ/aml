@@ -5,14 +5,12 @@ from preprocessing.data_util import get_data_splits, load_data_to_mem
 from random_forests.CompositeRandomForest import CompositeRandomForest
 from evaluator.Evaluator import Evaluator
 from preprocessing.TreeImageDataset import TreeImageDataset
-from tboard.plotting import plot_confusion_matrix
-from tboard.summarywriter import write_summary
 
 
 SEED = int(os.getenv("SEED", "123"))
 
 
-def train_composite(n: int = 1) -> None:
+def train_composite(n: int = 5) -> None:
     """
     Trains one or more Composite Random Forest models.
 
@@ -44,7 +42,7 @@ def train_composite(n: int = 1) -> None:
         model.save(f"/weights/forest/{iter_seed}")
 
 
-def eval_composite(n: int = 2) -> None:
+def eval_composite(n: int = 5) -> None:
     """
     Evaluates pre-trained Composite Random Forest models.
 
@@ -75,18 +73,5 @@ def eval_composite(n: int = 2) -> None:
                                              TreeImageDataset("eval"), seed=iter_seed)
         x, y, z = load_data_to_mem(test_dataset)
 
-        eval_res = Evaluator.eval(model, x, y, z)
-        confusion_matrix = eval_res.confusion_matrix
-        image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
-
-        writer = write_summary(run_name="Forest")
-        writer.add_scalar("Classifier/Accuracy", eval_res.accuracy, iter_seed)
-        writer.add_scalar("Classifier/F1", eval_res.f1_score, iter_seed)
-        writer.add_scalar("Classifier/top_k", eval_res.top_3, iter_seed)
-        writer.add_scalar("Classifier/top_k", eval_res.top_5, iter_seed)
-        writer.add_scalar("Classifier/multiroc", eval_res.multiroc, iter_seed)
-        writer.add_image("Classifier/Confusion Matrix", image, iter_seed)
-        writer.add_scalar("Regressor/IOU", eval_res.iou, iter_seed)
-        writer.close()
-
+        eval_res = Evaluator.eval(model, x, y, z, tag=f"Forest_eval_s{iter_seed}")
         logger.info(eval_res)

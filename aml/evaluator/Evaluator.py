@@ -17,7 +17,6 @@ class EvalMetric:
     multiroc: float
     f1_score: float
     confusion_matrix: torch.Tensor
-    num_classes: int
     best_classes: torch.Tensor
     worst_classes: torch.Tensor
     iou: float
@@ -157,7 +156,6 @@ class Evaluator:
             multiroc=multiroc,
             f1_score=f1,
             confusion_matrix=confusion_matrix,
-            num_classes=clas.shape[0],
             best_classes=best,
             worst_classes=worst,
             iou=iou,
