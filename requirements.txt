@@ -11,3 +11,5 @@ optuna
 litserve
 streamlit
 torchmetrics
+torcheval
+tensorboard

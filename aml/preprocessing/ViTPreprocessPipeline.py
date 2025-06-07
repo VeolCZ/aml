@@ -116,7 +116,7 @@ class ViTPreprocessPipeline:
             case "saltandpepper":
                 alteration_method = A.SaltAndPepper(amount=(severity, severity), p=1)
             case "motionblur":
-                alteration_method = A.MotionBlur(blur_limit=[10 * severity, 10 * severity], p=1)
+                alteration_method = A.MotionBlur(blur_limit=[100 * severity, 100 * severity], p=1)
             case "superpixels":
                 alteration_method = A.Superpixels(p_replace=[severity, severity], p=1)
             case _:
