@@ -31,7 +31,7 @@ class ViTImageDataset(Dataset):
     """
 
     def __init__(
-        self, type: DatasetType, gaussian_noise_severity: float = 0, alteration_type: robustness_type = "gaussian"
+        self, type: DatasetType, noise_severity: float = 0, alteration_type: robustness_type = "gaussian"
     ) -> None:
         """
         Initializes ViTImageDataset.
@@ -49,9 +49,7 @@ class ViTImageDataset(Dataset):
         elif type == "train":
             self._base_transform = ViTPreprocessPipeline.get_base_train_transform()
         elif type == "robustness":
-            self._base_transform = ViTPreprocessPipeline.get_base_robustness_transform(
-                gaussian_noise_severity, alteration_type
-            )
+            self._base_transform = ViTPreprocessPipeline.get_base_robustness_transform(noise_severity, alteration_type)
         else:
             raise RuntimeError("Error setting transformation: Invalid dataset type")
 

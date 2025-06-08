@@ -162,56 +162,29 @@ def optimize_hyperparameters(trial_count: int = 10) -> dict[str, float]:
     return study.best_params
 
 
-def get_one_robustness_evaluation(gaussian_noise_severity: float, alteration_type: robustness_type) -> None:
+def get_one_robustness_evaluation(noise_severity: float, alteration_type: robustness_type, n: int = 5) -> None:
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
-    assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
+    assert os.path.exists("/weights/ViT"), "Please ensure the /weights/ViT directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
-    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
 
-    model = ViT()
-    model.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
-    robustness_dataset = ViTImageDataset(
-        type="robustness", gaussian_noise_severity=gaussian_noise_severity, alteration_type=alteration_type
-    )
+    logger = logging.getLogger("ViT Eval")
+    for i in range(n):
+        iter_seed = SEED + i
+        set_seeds(iter_seed)
+        logger.info(f"Evaluating with seed {iter_seed}")
+        model = ViT()
+        model.load(f"/weights/ViT/{iter_seed}.pth")
 
-    all_labels = robustness_dataset.get_cls_labels()
-    _, test_indices, _, _ = train_test_split(
-        np.arange(len(robustness_dataset)), all_labels, test_size=TEST_SIZE, stratify=all_labels, random_state=SEED
-    )
+        _, _, test_dataset = get_data_splits(
+            ViTImageDataset("train"),
+            ViTImageDataset(type="robustness", noise_severity=noise_severity, alteration_type=alteration_type),
+            seed=iter_seed,
+        )
+        x, y, z = load_data_to_mem(test_dataset)
 
-    test_dataset = Subset(robustness_dataset, test_indices)
-    dataloader = DataLoader(
-        test_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=multiprocessing.cpu_count(), pin_memory=True
-    )
-
-    x_all_batches: list[torch.Tensor] = []
-    y_all_batches: list[torch.Tensor] = []
-    z_all_batches: list[torch.Tensor] = []
-
-    for imgs_batch, labels_batch in dataloader:
-        x_all_batches.append(imgs_batch)
-        y_all_batches.append(labels_batch["cls"])
-        z_all_batches.append(labels_batch["bbox"])
-
-    x = torch.cat(x_all_batches, dim=0)
-    y = torch.cat(y_all_batches, dim=0)
-    z = torch.cat(z_all_batches, dim=0).squeeze(1)
-
-    eval_res = Evaluator.eval(model, x, y, z)
-
-    writer = write_summary(run_name="ViT robustness")
-    writer.add_scalar("ViT/Accuracy robustness", eval_res.accuracy, gaussian_noise_severity)
-    writer.add_scalar("ViT/F1 robustness", eval_res.f1_score, gaussian_noise_severity)
-    writer.add_scalar("ViT/top_k robustness", eval_res.top_3, gaussian_noise_severity)
-    writer.add_scalar("ViT/top_k robustness", eval_res.top_5, gaussian_noise_severity)
-    writer.add_scalar("ViT/multiroc robustness", eval_res.multiroc, gaussian_noise_severity)
-    writer.add_scalar("ViT/IOU robustness", eval_res.iou, gaussian_noise_severity)
-
-    writer.close()
-
-    logger = logging.getLogger("Forest Eval")
-    logger.info(eval_res)
+        eval_res = Evaluator.eval(model, x, y, z, tag=f"ViT_robustness_s{iter_seed}")
+        logger.info(eval_res)
 
 
 def calculate_robustness(distortion_type: robustness_type = "gaussian", severity_step: float = 0.1) -> None:
