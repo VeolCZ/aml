@@ -124,6 +124,9 @@ def produce_certainty_plot(data: pd.DataFrame) -> None:
 
 
 def make_visualization() -> None:
+    """
+    Generates and saves various visualizations for the dataset.
+    """
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
 

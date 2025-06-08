@@ -2,7 +2,7 @@ import pandas as pd
 import torch
 import torchvision
 from numpy.typing import NDArray
-from preprocessing.ViTImageDataset import DatasetType, LabelType, d_type, use_cols
+from preprocessing.ViTImageDataset import DatasetType, LabelType, d_type, use_cols, class_count
 from preprocessing.TreePrerocessPipeline import TreePrerocessPipeline
 from torch.utils.data import Dataset
 
@@ -63,10 +63,12 @@ class TreeImageDataset(Dataset):
         transformed_image = transformed["image"]
         transformed_bboxes = transformed["bboxes"]
         transformed_labels = int(transformed["class_labels"][0])
+        one_hot_cls = torch.zeros((class_count))
+        one_hot_cls[transformed_labels - 1] = 1
 
         labels = {
             "bbox": torch.tensor(transformed_bboxes, dtype=torch.float) / TreePrerocessPipeline.img_size,
-            "cls": torch.tensor(transformed_labels) - 1
+            "cls": one_hot_cls
         }
 
         return transformed_image, labels
@@ -117,4 +119,11 @@ class TreeImageDataset(Dataset):
         return image_features, labels
 
     def get_cls_labels(self) -> list[int]:
+        """
+        Returns a list of all class labels in the dataset.
+
+        Returns:
+            list[int]: A list containing the integer class ID for each sample
+                in the dataset.
+        """
         return [int(label) for label in self._labels["class_id"]]

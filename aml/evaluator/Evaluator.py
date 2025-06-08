@@ -1,10 +1,12 @@
-from dataclasses import dataclass
 import torch
 import torchvision
 from sklearn.metrics import accuracy_score
 from interface.ModelInterface import ModelInterface
 from torcheval.metrics.functional import multiclass_auroc, multiclass_f1_score, multiclass_confusion_matrix, \
     multiclass_accuracy
+from tboard.summarywriter import write_summary
+from tboard.plotting import plot_confusion_matrix
+from dataclasses import dataclass
 
 
 @dataclass
@@ -15,7 +17,6 @@ class EvalMetric:
     multiroc: float
     f1_score: float
     confusion_matrix: torch.Tensor
-    num_classes: int
     best_classes: torch.Tensor
     worst_classes: torch.Tensor
     iou: float
@@ -122,7 +123,8 @@ class Evaluator:
 
     @staticmethod
     def eval(model: ModelInterface, input_data: torch.Tensor,
-             clas_label: torch.Tensor, bbox_label: torch.Tensor
+             clas_label: torch.Tensor, bbox_label: torch.Tensor,
+             tag: str = "Eval"
              ) -> EvalMetric:
         """
         Evaluate the model using various metrics.
@@ -147,17 +149,37 @@ class Evaluator:
         iou = Evaluator.get_IOU(bbox, bbox_label)
         random_iou = Evaluator.get_IOU(bbox_label.mean(0).repeat((bbox_label.shape[0], 1)), bbox_label)
 
-        eval_results = EvalMetric(
+        eval_res = EvalMetric(
             accuracy=acc,
             top_3=top_3,
             top_5=top_5,
             multiroc=multiroc,
             f1_score=f1,
             confusion_matrix=confusion_matrix,
-            num_classes=clas.shape[0],
             best_classes=best,
             worst_classes=worst,
             iou=iou,
             random_iou=random_iou
         )
-        return eval_results
+
+        matrix_image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
+
+        writer = write_summary(run_name=tag)
+        writer.add_image("Confusion Matrix", matrix_image, 0)
+        hparams = {
+            "seed": tag
+        }
+
+        metrics = {
+            "accuracy": eval_res.accuracy,
+            "f1_score": eval_res.f1_score,
+            "auroc": eval_res.multiroc,
+            "top_3_accuracy": eval_res.top_3,
+            "top_5_accuracy": eval_res.top_5,
+            "iou": eval_res.iou,
+            "random_iou": eval_res.random_iou
+        }
+
+        writer.add_hparams(hparams, metrics, run_name=tag)
+        writer.close()
+        return eval_res

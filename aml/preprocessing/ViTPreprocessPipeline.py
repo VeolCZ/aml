@@ -57,7 +57,6 @@ class ViTPreprocessPipeline:
                          bbox_params=A.BboxParams(
                              format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.8,
                              clip=True,
                          ),
                          seed=SEED
@@ -81,7 +80,6 @@ class ViTPreprocessPipeline:
                          bbox_params=A.BboxParams(
                              format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.8,
                              clip=True
                          ),
                          seed=SEED
@@ -102,6 +100,18 @@ class ViTPreprocessPipeline:
 
     @staticmethod
     def vit_predict_transform(image: NDArray) -> torch.Tensor:
+        """
+        Prepares a raw image for prediction with a ViT model.
+
+        This applies the standard evaluation pipeline and ViT-specific processing
+        to a single image, returning a batched tensor ready for inference.
+
+        Args:
+            image (NDArray): The input image as a NumPy array.
+
+        Returns:
+            torch.Tensor: The processed image tensor.
+        """
         transform = ViTPreprocessPipeline.get_base_eval_transform()
         raw_img = transform(
             image=image,
