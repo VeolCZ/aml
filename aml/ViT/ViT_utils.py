@@ -13,7 +13,6 @@ from evaluator.Evaluator import Evaluator
 from preprocessing.ViTImageDataset import ViTImageDataset, robustness_type
 from preprocessing.data_util import load_data_to_mem
 
-
 SEED = int(os.getenv("SEED", "123"))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 TEST_SIZE = float(os.getenv("TEST_SIZE", "0.1"))
@@ -71,7 +70,6 @@ def eval_vit(n: int = 5) -> None:
         iter_seed = SEED + i
         set_seeds(iter_seed)
         logger.info(f"Evaluating with seed {iter_seed}")
-
         model = ViT()
         model.load(f"/weights/ViT/{iter_seed}.pth")
 
@@ -216,7 +214,7 @@ def get_one_robustness_evaluation(gaussian_noise_severity: float, alteration_typ
     logger.info(eval_res)
 
 
-def calculate_robustness(distortion_type:robustness_type="gaussian", severity_step:float=0.1)->None:
+def calculate_robustness(distortion_type: robustness_type = "gaussian", severity_step: float = 0.1) -> None:
     severity = 0.0
     while severity <= 1:
         get_one_robustness_evaluation(severity, distortion_type)
