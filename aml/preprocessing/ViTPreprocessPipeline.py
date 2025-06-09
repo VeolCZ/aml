@@ -3,13 +3,12 @@ import albumentations as A
 import torch
 import cv2
 from albumentations.pytorch import ToTensorV2
-from typing import Union, Literal
+from typing import Union
 from transformers import ViTImageProcessor
 from transformers.feature_extraction_sequence_utils import BatchFeature
 from numpy.typing import NDArray
 
 SEED = int(os.getenv("SEED", "123"))
-robustness_type = Union[Literal["gaussian"], Literal["saltandpepper"], Literal["motionblur"], Literal["superpixels"]]
 
 
 class ViTPreprocessPipeline:

@@ -7,7 +7,7 @@ from typing import Literal, Union
 from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline
 from albumentations import Compose
 
-DatasetType = Union[Literal["eval"], Literal["train"], Literal["robustness"]]
+DatasetType = Union[Literal["eval"], Literal["train"]]
 LabelType = dict[str, torch.Tensor]  # not dataclass as pytorch weak
 use_cols = ["image_path", "class_id", "x", "y", "width", "height"]
 d_type = {
