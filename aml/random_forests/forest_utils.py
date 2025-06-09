@@ -139,12 +139,12 @@ def eval_composite_robustnes() -> None:
     model.load(f"/weights/forest/{SEED}")
     severity = 0.0
     severity_step = 0.05
-    for type in ["gaussian", "saltandpepper", "motionblur", "superpixels"]:
-        writer = write_summary(run_name=f"Forest_robustness_s{SEED}_{type}")
 
+    writer = write_summary(run_name=f"Forest_robustness_s{SEED}")
+    for type in ["gaussian", "saltandpepper", "motionblur", "superpixels"]:
         severity = 0.0
         while severity <= 1:
             get_one_robustness_evaluation(model, severity, type, writer)
             severity += severity_step
 
-        writer.close()
+    writer.close()

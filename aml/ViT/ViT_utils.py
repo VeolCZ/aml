@@ -223,14 +223,15 @@ def eval_vit_robustnes() -> None:
 
     model = ViT()
     model.load(f"/weights/ViT/{SEED}.pth")
+
     severity = 0.0
     severity_step = 0.05
-    for type in ["gaussian", "saltandpepper", "motionblur", "superpixels"]:
-        writer = write_summary(run_name=f"ViT_robustness_s{SEED}_{type}")
 
+    writer = write_summary(run_name=f"ViT_robustness_s{SEED}")
+    for type in ["gaussian", "saltandpepper", "motionblur", "superpixels"]:
         severity = 0.0
         while severity <= 1:
             get_one_robustness_evaluation(model, severity, type, writer)
             severity += severity_step
 
-        writer.close()
+    writer.close()
