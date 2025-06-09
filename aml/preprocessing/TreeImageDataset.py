@@ -5,6 +5,7 @@ from numpy.typing import NDArray
 from preprocessing.ViTImageDataset import DatasetType, LabelType, d_type, use_cols, class_count
 from preprocessing.TreePrerocessPipeline import TreePrerocessPipeline
 from torch.utils.data import Dataset
+from albumentations import Compose
 
 
 class TreeImageDataset(Dataset):
@@ -33,6 +34,9 @@ class TreeImageDataset(Dataset):
             self._base_transform = TreePrerocessPipeline.get_base_train_transform()
         else:
             raise RuntimeError("Error setting transformation: Invalid dataset type")
+
+    def set_transform(self, transform: Compose) -> None:
+        self._base_transform = transform
 
     def __len__(self) -> int:
         """

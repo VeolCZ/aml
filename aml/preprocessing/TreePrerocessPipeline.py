@@ -78,6 +78,53 @@ class TreePrerocessPipeline:
                          )
 
     @staticmethod
+    def get_base_robustness_transform(severity: float, alteration_type: str) -> A.Compose:
+        """
+        Returns the base transformation pipeline for evaluation.
+
+        Args:
+            severity (float): the severity of the noise to be applied on the image
+
+        Returns:
+            A.Compose: The evaluation transformation pipeline.
+        """
+        alteration_method = None
+        match alteration_type:
+            case "gaussian":
+                alteration_method = A.GaussNoise(std_range=(severity, severity), p=1)
+            case "saltandpepper":
+                alteration_method = A.SaltAndPepper(amount=(severity, severity), p=1)
+            case "motionblur":
+                alteration_method = A.MotionBlur(blur_limit=(
+                    max(int(100 * severity) + severity % 2 == 0, 3),
+                    max(int(100 * severity) + severity % 2 == 0, 3)), p=1)
+            case "superpixels":
+                alteration_method = A.Superpixels(p_replace=(severity, severity), p=1)
+            case _:
+                raise ValueError(f"{alteration_type} is not an accepted alteration type")
+
+        eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
+            A.Resize(
+                height=TreePrerocessPipeline.img_size,
+                width=TreePrerocessPipeline.img_size,
+            ),
+            alteration_method,
+            A.Normalize(),
+            ToTensorV2(),
+        ]
+
+        return A.Compose(
+            transforms=eval_transforms,
+            bbox_params=A.BboxParams(
+                format="pascal_voc",
+                label_fields=["class_labels"],
+                min_visibility=0.8,
+                clip=True,
+            ),
+            seed=SEED,
+        )
+
+    @staticmethod
     def tree_image_transform(image: NDArray) -> torch.Tensor:
         """
         Extracts HOG features from an image.
