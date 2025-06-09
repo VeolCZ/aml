@@ -183,11 +183,19 @@ def get_one_robustness_evaluation(noise_severity: float, alteration_type: robust
         )
         x, y, z = load_data_to_mem(test_dataset)
 
-        eval_res = Evaluator.eval(model, x, y, z, tag=f"ViT_robustness_s{iter_seed}")
+        eval_res = Evaluator.eval(
+            model,
+            x,
+            y,
+            z,
+            tag=f"ViT_robustness_s{iter_seed}",
+            global_step=noise_severity,
+            base_log_dir=f"logs/tb/{alteration_type}/",
+        )
         logger.info(eval_res)
 
 
-def calculate_robustness(distortion_type: robustness_type = "gaussian", severity_step: float = 0.1) -> None:
+def calculate_robustness(severity_step: float = 0.1, distortion_type: robustness_type = "gaussian") -> None:
     severity = 0.0
     while severity <= 1:
         get_one_robustness_evaluation(severity, distortion_type)

@@ -2,8 +2,12 @@ import torch
 import torchvision
 from sklearn.metrics import accuracy_score
 from interface.ModelInterface import ModelInterface
-from torcheval.metrics.functional import multiclass_auroc, multiclass_f1_score, multiclass_confusion_matrix, \
-    multiclass_accuracy
+from torcheval.metrics.functional import (
+    multiclass_auroc,
+    multiclass_f1_score,
+    multiclass_confusion_matrix,
+    multiclass_accuracy,
+)
 from tboard.summarywriter import write_summary
 from tboard.plotting import plot_confusion_matrix
 from dataclasses import dataclass
@@ -87,10 +91,9 @@ class Evaluator:
         return multiclass_confusion_matrix(clas, true_label_indices, num_classes=clas.shape[1], normalize="pred")
 
     @staticmethod
-    def best_and_worst(pred_label_indices: torch.Tensor,
-                       true_label_indices: torch.Tensor,
-                       num_classes: int, k: int = 3
-                       ) -> tuple[torch.Tensor, torch.Tensor]:
+    def best_and_worst(
+        pred_label_indices: torch.Tensor, true_label_indices: torch.Tensor, num_classes: int, k: int = 3
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Computing top k best and worst performing glasses based on the per-class accuracy.
         args:
@@ -101,7 +104,8 @@ class Evaluator:
         returns: A tuple containing the indices of the best and worst classes.
         """
         per_class_acc = multiclass_accuracy(
-            input=pred_label_indices, target=true_label_indices, num_classes=num_classes, average=None)
+            input=pred_label_indices, target=true_label_indices, num_classes=num_classes, average=None
+        )
         valid = ~torch.isnan(per_class_acc)
         valid_accs = per_class_acc[valid]
         k = min(k, len(valid_accs))
@@ -122,10 +126,15 @@ class Evaluator:
         return float(diagonal.mean(-1).item())
 
     @staticmethod
-    def eval(model: ModelInterface, input_data: torch.Tensor,
-             clas_label: torch.Tensor, bbox_label: torch.Tensor,
-             tag: str = "Eval"
-             ) -> EvalMetric:
+    def eval(
+        model: ModelInterface,
+        input_data: torch.Tensor,
+        clas_label: torch.Tensor,
+        bbox_label: torch.Tensor,
+        tag: str = "Eval",
+        global_step: float = 0,
+        base_log_dir: str = "logs/tb/",
+    ) -> EvalMetric:
         """
         Evaluate the model using various metrics.
         args:
@@ -133,6 +142,7 @@ class Evaluator:
             input_data (torch.Tensor): The input data for the model.
             clas_label (torch.Tensor): The true class labels.
             bbox_label (torch.Tensor): The true bounding box labels.
+            global_step (float): the global step used in plotting
         returns: An EvalMetric object containing the evaluation results.
         """
         bbox, clas = model.predict(input_data)
@@ -159,16 +169,14 @@ class Evaluator:
             best_classes=best,
             worst_classes=worst,
             iou=iou,
-            random_iou=random_iou
+            random_iou=random_iou,
         )
 
         matrix_image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
 
-        writer = write_summary(run_name=tag)
-        writer.add_image("Confusion Matrix", matrix_image, 0)
-        hparams = {
-            "seed": tag
-        }
+        writer = write_summary(run_name=tag, base_log_dir=base_log_dir)
+        writer.add_image("Confusion Matrix", matrix_image, global_step)
+        hparams = {"seed": tag}
 
         metrics = {
             "accuracy": eval_res.accuracy,
@@ -177,7 +185,7 @@ class Evaluator:
             "top_3_accuracy": eval_res.top_3,
             "top_5_accuracy": eval_res.top_5,
             "iou": eval_res.iou,
-            "random_iou": eval_res.random_iou
+            "random_iou": eval_res.random_iou,
         }
 
         writer.add_hparams(hparams, metrics, run_name=tag)
