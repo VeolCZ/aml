@@ -8,8 +8,6 @@ from torcheval.metrics.functional import (
     multiclass_confusion_matrix,
     multiclass_accuracy,
 )
-from tboard.summarywriter import write_summary
-from tboard.plotting import plot_confusion_matrix
 from dataclasses import dataclass
 
 
@@ -131,9 +129,6 @@ class Evaluator:
         input_data: torch.Tensor,
         clas_label: torch.Tensor,
         bbox_label: torch.Tensor,
-        tag: str = "Eval",
-        global_step: float = 0,
-        base_log_dir: str = "logs/tb/",
     ) -> EvalMetric:
         """
         Evaluate the model using various metrics.
@@ -172,22 +167,4 @@ class Evaluator:
             random_iou=random_iou,
         )
 
-        matrix_image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
-
-        writer = write_summary(run_name=tag, base_log_dir=base_log_dir)
-        writer.add_image("Confusion Matrix", matrix_image, global_step)
-        hparams = {"seed": tag}
-
-        metrics = {
-            "accuracy": eval_res.accuracy,
-            "f1_score": eval_res.f1_score,
-            "auroc": eval_res.multiroc,
-            "top_3_accuracy": eval_res.top_3,
-            "top_5_accuracy": eval_res.top_5,
-            "iou": eval_res.iou,
-            "random_iou": eval_res.random_iou,
-        }
-
-        writer.add_hparams(hparams, metrics, run_name=tag)
-        writer.close()
         return eval_res

@@ -2,11 +2,11 @@ import logging
 import os
 import sys
 from util import set_seeds
-from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit, calculate_robustness
+from ViT.ViT_utils import eval_vit, optimize_hyperparameters, train_vit, eval_vit_robustnes
 from make_visualisations import make_visualization
 from api.api import serve
 from make_labels import make_labels
-from random_forests.forest_utils import train_composite, eval_composite
+from random_forests.forest_utils import train_composite, eval_composite, eval_composite_robustnes
 from streamlit_app.run_streamlit import run_streamlit
 
 logging.basicConfig(
@@ -41,7 +41,8 @@ COMMAND_MAP = {
     "--eval_forest": (eval_composite, "Eval random forests"),
     "--serve": (serve, "Serve the models through API"),
     "--streamlit": (run_streamlit, "Run the streamlit application"),
-    "--robustness_vit": (calculate_robustness, "Calculates the robustness of the model"),
+    "--robustness_vit": (eval_vit_robustnes, "Calculates the robustness of the ViT"),
+    "--robustness_forest": (eval_composite_robustnes, "Calculates the robustness of the random forest")
 }
 
 

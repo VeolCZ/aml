@@ -99,7 +99,7 @@ class ViTPreprocessPipeline:
         )
 
     @staticmethod
-    def get_base_robustness_transform(severity: float = 0, alteration_type: robustness_type = "gaussian") -> A.Compose:
+    def get_base_robustness_transform(severity: float, alteration_type: str) -> A.Compose:
         """
         Returns the base transformation pipeline for evaluation.
 
@@ -112,13 +112,13 @@ class ViTPreprocessPipeline:
         alteration_method = None
         match alteration_type:
             case "gaussian":
-                alteration_method = A.GaussNoise(std_range=[severity, severity], p=1)
+                alteration_method = A.GaussNoise(std_range=(severity, severity), p=1)
             case "saltandpepper":
                 alteration_method = A.SaltAndPepper(amount=(severity, severity), p=1)
             case "motionblur":
-                alteration_method = A.MotionBlur(blur_limit=[100 * severity, 100 * severity], p=1)
+                alteration_method = A.MotionBlur(blur_limit=(int(100 * severity), int(100 * severity)), p=1)
             case "superpixels":
-                alteration_method = A.Superpixels(p_replace=[severity, severity], p=1)
+                alteration_method = A.Superpixels(p_replace=(severity, severity), p=1)
             case _:
                 raise ValueError(f"{alteration_type} is not an accepted alteration type")
 

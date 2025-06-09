@@ -4,8 +4,8 @@ import torchvision
 from numpy.typing import NDArray
 from torch.utils.data import Dataset
 from typing import Literal, Union
-from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline, robustness_type
-
+from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline
+from albumentations import Compose
 
 DatasetType = Union[Literal["eval"], Literal["train"], Literal["robustness"]]
 LabelType = dict[str, torch.Tensor]  # not dataclass as pytorch weak
@@ -30,9 +30,7 @@ class ViTImageDataset(Dataset):
         _base_transform (Callable): Transformation pipeline from ViTPreprocessPipeline.
     """
 
-    def __init__(
-        self, type: DatasetType, noise_severity: float = 0, alteration_type: robustness_type = "gaussian"
-    ) -> None:
+    def __init__(self, type: DatasetType) -> None:
         """
         Initializes ViTImageDataset.
 
@@ -48,10 +46,11 @@ class ViTImageDataset(Dataset):
             self._base_transform = ViTPreprocessPipeline.get_base_eval_transform()
         elif type == "train":
             self._base_transform = ViTPreprocessPipeline.get_base_train_transform()
-        elif type == "robustness":
-            self._base_transform = ViTPreprocessPipeline.get_base_robustness_transform(noise_severity, alteration_type)
         else:
             raise RuntimeError("Error setting transformation: Invalid dataset type")
+
+    def set_transform(self, transform: Compose) -> None:
+        self._base_transform = transform
 
     def __len__(self) -> int:
         """
