@@ -21,10 +21,25 @@ def parse_labels(base_path: str) -> pd.DataFrame:
                                sep=" ", header=None, names=["image_id", "class_id"])
     bounding_boxes = pd.read_csv(os.path.join(base_path, "bounding_boxes.txt"),
                                  sep=" ", header=None, names=["image_id", "x", "y", "width", "height"])
+    attribute_labels_names = ["image_id", "attribute_id", "is_present", "certainty_id", "time"]
+    attribute_labels = pd.read_csv(os.path.join(base_path, "attributes", "image_attribute_labels_clean.txt"),
+                                   sep=" ", header=None,
+                                   names=attribute_labels_names)
+
+    image_attributes = attribute_labels.groupby(["image_id", "attribute_id"])
+
+    attr_presence = image_attributes["is_present"].mean().unstack()
+    attr_presence.columns = [f"attr_{col}_pres" for col in attr_presence.columns]
+
+    attr_certainty = image_attributes["certainty_id"].mean().unstack()
+    attr_certainty.columns = [f"attr_{col}_cert" for col in attr_certainty.columns]
+
+    image_attributes_df = attr_presence.merge(attr_certainty, left_index=True, right_index=True, how="left")
 
     df = images.merge(train_test, on="image_id")
     df = df.merge(image_labels, on="image_id")
     df = df.merge(bounding_boxes, on="image_id")
+    df = df.merge(image_attributes_df, on="image_id", how="left")
     df["image_path"] = base_path + "/images/" + df["image_name"]
 
     columns = ["image_id", "image_path", "class_id", "is_training", "x", "y", "width", "height"]
