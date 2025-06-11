@@ -2,16 +2,20 @@ import os
 import optuna
 import logging
 import torch
-import numpy as np
 import multiprocessing
+import gc
 from ViT.ViT import ViT
-from torch.utils.data import DataLoader, Subset
-from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader
+from tboard.summarywriter import write_summary
+from util import set_seeds
 from ViT.ViTTrainer import ViTTrainer
+from preprocessing.data_util import get_data_splits
 from evaluator.Evaluator import Evaluator
 from preprocessing.ViTImageDataset import ViTImageDataset
-from tboard.summarywriter import write_summary
+from preprocessing.data_util import load_data_to_mem
 from tboard.plotting import plot_confusion_matrix
+from torch.utils.tensorboard import SummaryWriter
+from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline
 
 SEED = int(os.getenv("SEED", "123"))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
@@ -19,99 +23,88 @@ TEST_SIZE = float(os.getenv("TEST_SIZE", "0.1"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def train_vit() -> None:
+def train_vit(n: int = 5) -> None:
     """
-    Trains a Vision Transformer (ViT) model on an image dataset.
+    Trains one or more Vision Transformer (ViT) models.
 
-    Global variables:
-        device (torch.device): The device (CPU or CUDA) on which to perform computations.
+    Args:
+        n (int): The number of models to train with different seeds.
     """
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
 
-    # Datasets
-    train_dataset = ViTImageDataset(type="train")
+    if not os.path.exists("/weights/ViT"):
+        os.makedirs("/weights/ViT", exist_ok=True)
+    logger = logging.getLogger("ViT Trainer")
 
-    all_labels = train_dataset.get_cls_labels()
-    train_indices, _, _, _ = train_test_split(
-        np.arange(len(train_dataset)),
-        all_labels,
-        test_size=TEST_SIZE,
-        stratify=all_labels,
-        random_state=SEED
-    )
+    for i in range(n):
+        iter_seed = SEED + i
+        set_seeds(iter_seed)
+        logger.info(f"Training with seed {iter_seed}")
 
-    train_dataset_subset = Subset(train_dataset, train_indices)
+        model = ViT()
+        train_dataset, val_dataset, _ = get_data_splits(
+            ViTImageDataset("train"), ViTImageDataset("eval"), seed=iter_seed
+        )
 
-    # Train the model
-    model = ViT()
-    model.fit(train_dataset_subset)
+        model.fit(train_dataset, val_dataset)
+        model.save(f"/weights/ViT/{iter_seed}")
+
+        del model, train_dataset, val_dataset
+        gc.collect()
+        torch.cuda.empty_cache()
 
 
-def eval_vit() -> None:
+def eval_vit(n: int = 5) -> None:
+    """
+    Evaluates pre-trained Vision Transformer (ViT) models.
+
+    Args:
+        n (int): The number of saved models to evaluate.
+    """
     assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
-    assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
+    assert os.path.exists("/weights/ViT"), "Please ensure the /weights/ViT directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
-    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
 
-    model = ViT()
-    model.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
-    eval_dataset = ViTImageDataset(type="eval")
+    logger = logging.getLogger("ViT Robustness Eval")
+    for i in range(n):
+        iter_seed = SEED + i
+        set_seeds(iter_seed)
+        logger.info(f"Evaluating with seed {iter_seed}")
+        model = ViT()
+        model.load(f"/weights/ViT/{iter_seed}.pth")
 
-    all_labels = eval_dataset.get_cls_labels()
-    _, test_indices, _, _ = train_test_split(
-        np.arange(len(eval_dataset)),
-        all_labels,
-        test_size=TEST_SIZE,
-        stratify=all_labels,
-        random_state=SEED
-    )
+        _, _, test_dataset = get_data_splits(ViTImageDataset("train"), ViTImageDataset("eval"), seed=iter_seed)
+        x, y, z = load_data_to_mem(test_dataset)
 
-    test_dataset = Subset(eval_dataset, test_indices)
-    dataloader = DataLoader(
-        test_dataset,
-        batch_size=BATCH_SIZE,
-        shuffle=True,
-        num_workers=multiprocessing.cpu_count(),
-        pin_memory=True
-    )
+        tag = f"ViT_eval_s{iter_seed}"
+        eval_res = Evaluator.eval(model, x, y, z)
+        logger.info(eval_res)
 
-    x_all_batches: list[torch.Tensor] = []
-    y_all_batches: list[torch.Tensor] = []
-    z_all_batches: list[torch.Tensor] = []
+        matrix_image = plot_confusion_matrix(eval_res.confusion_matrix.cpu().numpy())
+        writer = write_summary(run_name=tag)
+        writer.add_image("Confusion Matrix", matrix_image)
+        hparams = {"seed": tag}
 
-    for _, (imgs_batch, labels_batch) in enumerate(dataloader):
-        x_all_batches.append(imgs_batch)
-        y_all_batches.append(labels_batch["cls"])
-        z_all_batches.append(labels_batch["bbox"])
+        metrics = {
+            "accuracy": eval_res.accuracy,
+            "f1_score": eval_res.f1_score,
+            "auroc": eval_res.multiroc,
+            "top_3_accuracy": eval_res.top_3,
+            "top_5_accuracy": eval_res.top_5,
+            "iou": eval_res.iou,
+            "random_iou": eval_res.random_iou,
+        }
 
-    x = torch.cat(x_all_batches, dim=0)
-    y = torch.cat(y_all_batches, dim=0)
-    z = torch.cat(z_all_batches, dim=0).squeeze(1)
-
-    eval_res = Evaluator.eval(model, x, y, z)
-    confusion_matrix = eval_res.confusion_matrix
-    image = plot_confusion_matrix(confusion_matrix.cpu().numpy())
-
-    writer = write_summary(run_name="ViT")
-    writer.add_scalar("ViT/Accuracy", eval_res.accuracy, 0)
-    writer.add_scalar("ViT/F1", eval_res.f1_score, 0)
-    writer.add_scalar("ViT/top_k", eval_res.top_3, 0)
-    writer.add_scalar("ViT/top_k", eval_res.top_5, 0)
-    writer.add_scalar("ViT/multiroc", eval_res.multiroc, 0)
-    writer.add_image("ViT/Confusion Matrix", image, 0)
-    writer.add_scalar("ViT/IOU", eval_res.iou, 0)
-    # add training plot here
-    writer.close()
-
-    logger = logging.getLogger("Forest Eval")
-    logger.info(eval_res)
+        writer.add_hparams(hparams, metrics, run_name=tag)
+        writer.add_scalar("accuracy", eval_res.accuracy)
+        writer.close()
 
 
-def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
+def optimize_hyperparameters(trial_count: int = 10) -> dict[str, float]:
     """
     Optimizes hyperparameters for the ViT model using Optuna.
 
@@ -120,7 +113,7 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
 
     Args:
         trial_count (int, optional): The number of optimization trials to run.
-                                     Defaults to 30.
+                                     Defaults to 10.
 
     Returns:
         dict[str, float | int]: A dictionary containing the best hyperparameters
@@ -143,24 +136,47 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
             float: The objective value to minimize (e.g., loss).
                    The ViTTrainer.train() method is expected to return this.
         """
-        number_of_folds = trial.suggest_int("n_of_folds", 8, 20, step=2)
-        learning_rate = trial.suggest_float("learning_rate", 1e-5, 1, log=True)
-        annealing_rate = trial.suggest_float("annealing_rate", 1e-8, learning_rate, log=True)
+        learning_rate = trial.suggest_float("learning_rate", 1e-6, 1e-3, log=True)
+        annealing_rate = trial.suggest_float("annealing_rate", 1e-10, learning_rate, log=True)
+        dropout_rate = trial.suggest_float("dropout_rate", 0.01, 0.1, step=0.01)
+        train_dataset, val_dataset, _ = get_data_splits(ViTImageDataset("train"), ViTImageDataset("eval"), seed=SEED)
+        model = ViT(dp_rate=dropout_rate)
+        trainer = ViTTrainer(
+            model,
+            device=DEVICE,
+            learning_rate=learning_rate,
+            epochs=20,
+            batch_size=BATCH_SIZE,
+            patience=2,
+            annealing_rate=annealing_rate,
+        )
 
-        model = ViT()
-        trainer = ViTTrainer(model, device=DEVICE, dataset=ViTImageDataset(type="train"),
-                             learning_rate=learning_rate, n_splits=number_of_folds, epochs=20,
-                             batch_size=BATCH_SIZE,
-                             patience=3, annealing_rate=annealing_rate)
-        return float(trainer.train())
+        traind_dl = DataLoader(
+            train_dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            num_workers=multiprocessing.cpu_count(),
+            pin_memory=DEVICE.type == "cuda",
+        )
+        val_dl = DataLoader(
+            val_dataset,
+            batch_size=BATCH_SIZE,
+            shuffle=True,
+            num_workers=multiprocessing.cpu_count(),
+            pin_memory=DEVICE.type == "cuda",
+        )
+        return float(trainer.train(traind_dl, val_dl))
 
     STUDY_NAME = "vit_hyperparams"
     STORAGE_URL = f"sqlite:////logs/{STUDY_NAME}.db"
 
-    study = optuna.create_study(direction="minimize", load_if_exists=True, study_name=STUDY_NAME,
-                                storage=STORAGE_URL,)
-    study.optimize(objective, n_trials=trial_count,
-                   show_progress_bar=True, gc_after_trial=True, n_jobs=1)
+    study = optuna.create_study(
+        direction="minimize",
+        load_if_exists=True,
+        study_name=STUDY_NAME,
+        storage=STORAGE_URL,
+    )
+    study.optimize(objective, n_trials=trial_count, show_progress_bar=True, gc_after_trial=True, n_jobs=1)
 
     logger = logging.getLogger("HyperparameterOptimizer")
     study_df = study.trials_dataframe()
@@ -168,3 +184,54 @@ def optimize_hyperparameters(trial_count: int = 30) -> dict[str, float]:
     logger.info(study.best_params)
 
     return study.best_params
+
+
+def get_one_robustness_evaluation(model: ViT, noise_severity: float, alteration_type: str,
+                                  writer: SummaryWriter
+                                  ) -> None:
+    logger = logging.getLogger("ViT Eval")
+    logger.info(f"Evaluating with seed {SEED}")
+
+    robustness_dataset = ViTImageDataset("eval")
+    robustness_dataset.set_transform(
+        ViTPreprocessPipeline.get_base_robustness_transform(noise_severity, alteration_type))
+
+    set_seeds(SEED)
+    _, _, test_dataset = get_data_splits(
+        ViTImageDataset("train"),
+        robustness_dataset,
+        seed=SEED,
+    )
+    x, y, z = load_data_to_mem(test_dataset)
+
+    eval_res = Evaluator.eval(
+        model,
+        x,
+        y,
+        z,
+    )
+
+    writer.add_scalar(f"Accuracy/{alteration_type}", eval_res.accuracy, noise_severity*100)
+    writer.add_scalar(f"IOU/{alteration_type}", eval_res.iou, noise_severity*100)
+
+
+def eval_vit_robustnes() -> None:
+    assert os.path.exists("/data/CUB_200_2011"), "Please ensure the dataset is properly extracted into /data"
+    assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
+    assert os.path.exists("/weights/ViT"), "Please ensure the /weights/ViT directory exists"
+    assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
+
+    model = ViT()
+    model.load(f"/weights/ViT/{SEED}.pth")
+
+    severity = 0.0
+    severity_step = 0.05
+
+    writer = write_summary(run_name=f"ViT_robustness_s{SEED}")
+    for type in ["gaussian", "saltandpepper", "motionblur", "superpixels"]:
+        severity = 0.0
+        while severity <= 1:
+            get_one_robustness_evaluation(model, severity, type, writer)
+            severity += severity_step
+
+    writer.close()

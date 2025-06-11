@@ -14,19 +14,20 @@ class CompositeRandomForest(ModelInterface):
         classifier: the randomforest classifier.
         regressor: the randomforest regressor.
     """
+
     def __init__(self) -> None:
         super().__init__()
         self.classifier = RandomForestClassifierModel()
         self.regressor = RandomForestRegressorModel()
 
-    def fit(self, train_dataset: Dataset) -> None:
+    def fit(self, train_dataset: Dataset, val_dataset: Dataset) -> None:
         """
         Trains both random forests
         Args:
             train_dataset(Dataset): the dataset the forest needs to be trained on.
         """
-        self.classifier.fit(train_dataset)
-        self.regressor.fit(train_dataset)
+        self.classifier.fit(train_dataset, val_dataset)
+        self.regressor.fit(train_dataset, val_dataset)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
@@ -41,16 +42,16 @@ class CompositeRandomForest(ModelInterface):
         bbox, _ = self.regressor.predict(data)
         return bbox, cls
 
-    def save_model(self, path: str) -> None:
+    def save(self, path: str) -> None:
         """
         Saves both random forests
         Args:
             path(str): the path to the directory where the forests need to be saved.
         """
-        if not os.path.isdir(path):
-            os.mkdir(path)
-        self.classifier.save_model(path + "/classifier.pkl")
-        self.regressor.save_model(path + "/regressor.pkl")
+        if not os.path.exists(path):
+            os.makedirs(path, exist_ok=True)
+        self.classifier.save(path + "/classifier.pkl")
+        self.regressor.save(path + "/regressor.pkl")
 
     def load(self, path: str) -> None:
         """

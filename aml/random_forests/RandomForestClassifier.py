@@ -1,59 +1,63 @@
-import multiprocessing
-import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+import logging
 import torch
 import os
+from sklearn.ensemble import RandomForestClassifier
 from random_forests.RandomForest import RandomForest
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 from joblib import parallel_backend
+from preprocessing.data_util import load_data_to_mem
+from evaluator.Evaluator import Evaluator
+from tboard.summarywriter import write_summary
 
 SEED = int(os.getenv("SEED", "123"))
-BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 
 
 class RandomForestClassifierModel(RandomForest):
-    """
-    Random Forest model for classification tasks.
-    Inherits from the abstract base RandomForest class.
-    """
 
     def __init__(self) -> None:
         super().__init__(RandomForestClassifier(n_jobs=-1,
                                                 random_state=SEED, n_estimators=200, min_samples_split=2,
-                                                min_samples_leaf=4, max_depth=40, verbose=2, max_features="sqrt"))
+                                                min_samples_leaf=4, max_depth=40, verbose=0, max_features="sqrt"))
+        self.logger = logging.getLogger(self.__class__.__name__)
 
-    def fit(self, train_dataset: Dataset) -> None:
+    def fit(self, train_dataset: Dataset, val_dataset: Dataset) -> None:
         """
-        Trains the model
+        Fits the classifier on the training data and evaluates on validation data.
+
         Args:
-            train_dataset(Dataset): the dataset the forest needs to be trained on.
+            train_dataset (Dataset): The dataset used for training the model.
+            val_dataset (Dataset): The dataset used for evaluating the model.
         """
-        x_train, y_train = [], []
-        dataloader = DataLoader(
-            train_dataset,
-            batch_size=BATCH_SIZE,
-            shuffle=True,
-            num_workers=multiprocessing.cpu_count(),
-        )
-
-        for _, (imgs, labels) in enumerate(dataloader):
-            x_train.append(imgs)
-            y_train.append(np.array([label for label in labels["cls"]]))
-
-        x_train_ds = np.concatenate(x_train, axis=0)
-        y_train_ds = np.concatenate(y_train, axis=0)
+        writer = write_summary(run_name="RandomForestClassifier_Trainer")
+        x, y_one_hot, _ = load_data_to_mem(train_dataset)
+        y = y_one_hot.argmax(-1)
+        self.logger.info("Training started")
 
         with parallel_backend("loky", n_jobs=-1):
-            self.model.fit(x_train_ds, y_train_ds)
+            self.model.fit(x, y)
+
+        _, pred_cls = self.predict(x)
+        train_accuracy = Evaluator.get_accuracy(y_one_hot, pred_cls.argmax(-1))
+        self.logger.info(f"Training Accuracy: {train_accuracy:.4f}")
+        writer.add_scalar("train/accuracy", train_accuracy, 0)
+
+        x_val, y_val, _ = load_data_to_mem(val_dataset)
+        _, val_pred_cls = self.predict(x_val)
+        val_accuracy = Evaluator.get_accuracy(y_val, val_pred_cls.argmax(-1))
+        self.logger.info(f"Validation Accuracy: {val_accuracy:.4f}")
+        writer.add_scalar("val/accuracy", val_accuracy, 0)
 
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
-        Makes a prediction from the model(prbability distribution of classes)
+        Predicts class probabilities for the given input data.
+
         Args:
-            data(torch:Tensor): image in the form of a tensor.
+            data (torch.Tensor): The input data for which to make predictions.
+
         Returns:
-            prediction(tuple(torch.Tensor,torch.Tensor)): first tensor is empty
-                the second tensor contains the distribution of probability of classes.
+            tuple[torch.Tensor, torch.Tensor]: A tuple where the first element
+                is a placeholder tensor and the second contains the predicted
+                class probabilities.
         """
         cls = self.model.predict_proba(data)
 

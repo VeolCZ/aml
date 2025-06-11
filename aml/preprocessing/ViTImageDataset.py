@@ -1,18 +1,23 @@
-import numpy as np
 import pandas as pd
 import torch
-import torchvision.transforms.functional as F
+import torchvision
 from numpy.typing import NDArray
 from torch.utils.data import Dataset
-from torchvision.io import read_image
 from typing import Literal, Union
 from preprocessing.ViTPreprocessPipeline import ViTPreprocessPipeline
-
+from albumentations import Compose
 
 DatasetType = Union[Literal["eval"], Literal["train"]]
 LabelType = dict[str, torch.Tensor]  # not dataclass as pytorch weak
 use_cols = ["image_path", "class_id", "x", "y", "width", "height"]
-d_type = {"image_path": str, "class_id": int, "x": float, "y": float, "width": float, "height": float}
+d_type = {
+    "image_path": str,
+    "class_id": int,
+    "x": float,
+    "y": float,
+    "width": float,
+    "height": float,
+}
 class_count = 200
 
 
@@ -31,6 +36,7 @@ class ViTImageDataset(Dataset):
 
         Args:
             type (DatasetType): "train" or "eval", determines transformations.
+            eval_gaussian_noise_severity (float): the severity of the gaussian noise to be applied on the eval set
 
         Raises:
             RuntimeError: Invalid dataset type.
@@ -41,8 +47,10 @@ class ViTImageDataset(Dataset):
         elif type == "train":
             self._base_transform = ViTPreprocessPipeline.get_base_train_transform()
         else:
-            raise RuntimeError(
-                "Error setting transformation: Invalid dataset type")
+            raise RuntimeError("Error setting transformation: Invalid dataset type")
+
+    def set_transform(self, transform: Compose) -> None:
+        self._base_transform = transform
 
     def __len__(self) -> int:
         """
@@ -62,21 +70,19 @@ class ViTImageDataset(Dataset):
         Returns:
             tuple[torch.Tensor, LabelType]: Transformed image and labels ("bbox", "cls" tensors).
         """
-        transformed = self._base_transform(
-            image=image_np,
-            bboxes=[bbox],
-            class_labels=[label]
-        )
-        transformed_image = transformed["image"]
+        xmin, ymin, width, height = bbox
+        bbox_pascal_voc = [xmin, ymin, xmin + width, ymin + height]
+
+        transformed = self._base_transform(image=image_np, bboxes=[bbox_pascal_voc], class_labels=[label])
+        transformed_image: torch.Tensor = transformed["image"]
         transformed_bboxes = transformed["bboxes"]
         transformed_labels = int(transformed["class_labels"][0])
-
-        one_hot_cls = torch.zeros((class_count), dtype=torch.float)
-        one_hot_cls[transformed_labels - 1] = 1.0
+        one_hot_cls = torch.zeros((class_count))
+        one_hot_cls[transformed_labels - 1] = 1
 
         labels = {
-            "bbox": torch.tensor(transformed_bboxes, dtype=torch.float),
-            "cls": one_hot_cls
+            "bbox": torch.tensor(transformed_bboxes) / ViTPreprocessPipeline.img_size,
+            "cls": one_hot_cls,
         }
 
         return transformed_image, labels
@@ -105,28 +111,28 @@ class ViTImageDataset(Dataset):
             bbox: list[float] = [xmin, ymin, width, height]
 
         except Exception as e:
-            raise RuntimeError(
-                f"Error reading data for index {idx} from DataFrame: {e}")
+            raise RuntimeError(f"Error reading data for index {idx} from DataFrame: {e}")
 
         try:
-            image_tensor = read_image(img_path)
-            image = F.to_pil_image(image_tensor)
-            image_np = np.array(image)
-
+            image_tensor = torchvision.io.decode_image(img_path).permute(1, 2, 0)
         except Exception as e:
-            raise RuntimeError(
-                f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
+            raise RuntimeError(f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
 
-        transformed_image, labels = self._transform_data(image_np, class_id, bbox)
+        transformed_image, labels = self._transform_data(image_tensor.numpy(), class_id, bbox)
 
         try:
-            image_features = ViTPreprocessPipeline.vit_image_transform(
-                transformed_image)
+            image_features = ViTPreprocessPipeline.vit_image_transform(transformed_image)
 
         except Exception as e:
-            raise RuntimeError(
-                f"Error during embeddings generation at index {idx}: {e}")
+            raise RuntimeError(f"Error during embeddings generation at index {idx}: {e}")
         return torch.tensor(image_features.pixel_values[0]), labels
 
     def get_cls_labels(self) -> list[int]:
+        """
+        Returns a list of all class labels in the dataset.
+
+        Returns:
+            list[int]: A list containing the integer class ID for each sample
+                in the dataset.
+        """
         return [int(label) for label in self._labels["class_id"]]

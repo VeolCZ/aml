@@ -10,9 +10,8 @@ def run_streamlit() -> None:
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
-    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
-    assert os.path.exists("/weights/forest/classifier.pkl"), "Please ensure that you have the latest weights"
-    assert os.path.exists("/weights/forest/regressor.pkl"), "Please ensure that you have the latest weights"
+    assert os.path.exists("/weights/ViT/126.pth"), "Please ensure that you have the latest weights"
+    assert os.path.exists("/weights/forest/124"), "Please ensure that you have the latest weights"
 
     api_thread = threading.Thread(target=serve)
     api_thread.start()

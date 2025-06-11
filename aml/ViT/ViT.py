@@ -1,16 +1,17 @@
+import multiprocessing
 from preprocessing.ViTImageDataset import ViTImageDataset
 import torch
 import os
 from transformers import ViTForImageClassification
 from interface.ModelInterface import ModelInterface
-from datetime import datetime
+from torch.utils.data import DataLoader
 
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "32"))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class ViT(torch.nn.Module, ModelInterface):
-    def __init__(self, hidden_size: int = 1024, num_classes: int = 200, dp_rate: float = 0.1) -> None:
+    def __init__(self, hidden_size: int = 1024, num_classes: int = 200, dp_rate: float = 0.05) -> None:
         """
         Initializes the ViT model with a pre-trained backbone and custom heads.
 
@@ -24,6 +25,7 @@ class ViT(torch.nn.Module, ModelInterface):
         """
         super(ViT, self).__init__()
         backbone_out_size = 768
+        num_encoder_layers_to_unfreeze = 3
 
         self.backbone = ViTForImageClassification.from_pretrained(
             "google/vit-base-patch16-224", cache_dir="/data/vit")
@@ -31,6 +33,18 @@ class ViT(torch.nn.Module, ModelInterface):
 
         for param in self.backbone.parameters():
             param.requires_grad = False
+
+        encoder_layers = self.backbone.vit.encoder.layer
+        total_encoder_layers = len(encoder_layers)
+
+        layers_to_unfreeze = min(num_encoder_layers_to_unfreeze, total_encoder_layers)
+
+        for i in range(total_encoder_layers - layers_to_unfreeze, total_encoder_layers):
+            for param in encoder_layers[i].parameters():
+                param.requires_grad = True
+
+        for param in self.backbone.vit.layernorm.parameters():
+            param.requires_grad = True
 
         self.cls_head = torch.nn.Sequential(
             torch.nn.Linear(backbone_out_size, hidden_size),
@@ -56,6 +70,7 @@ class ViT(torch.nn.Module, ModelInterface):
             torch.nn.Dropout(dp_rate),
             torch.nn.LeakyReLU(),
             torch.nn.Linear(hidden_size // 4, 4),
+            torch.nn.Sigmoid(),
         )
 
         for layer in self.cls_head + self.bbox_head:
@@ -86,20 +101,22 @@ class ViT(torch.nn.Module, ModelInterface):
         cls = self.cls_head(backbone)
         return bbox, cls
 
-    def fit(self, dataset: ViTImageDataset) -> None:
+    def fit(self, train_dataset: ViTImageDataset, val_dataset: ViTImageDataset) -> None:
         from ViT.ViTTrainer import ViTTrainer  # Import as needed
 
-        model_path = f"/data/ViT_{datetime.utcnow()}"
-        learning_rate = 0.0012278101209126883
-        annealing_rate = 6.1313110341652e-07
-        n_of_folds = 10
+        learning_rate = 4.5044719925484676e-04
+        annealing_rate = 2.9188464128352595e-06
         epochs = 20
-        patience = 4
+        patience = 10
 
-        trainer = ViTTrainer(self, DEVICE, dataset,
+        trainer = ViTTrainer(self, DEVICE,
                              epochs=epochs, batch_size=BATCH_SIZE, patience=patience,
-                             learning_rate=learning_rate, n_splits=n_of_folds, annealing_rate=annealing_rate)
-        trainer.train(model_path=model_path, save=True)
+                             learning_rate=learning_rate, annealing_rate=annealing_rate)
+        traind_dl = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,
+                               num_workers=multiprocessing.cpu_count(), pin_memory=DEVICE.type == "cuda")
+        val_dl = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=True,
+                            num_workers=multiprocessing.cpu_count(), pin_memory=DEVICE.type == "cuda")
+        trainer.train(traind_dl, val_dl)
 
     @torch.inference_mode()
     def predict(self, data: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -128,3 +145,12 @@ class ViT(torch.nn.Module, ModelInterface):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(device=device)
         self.load_state_dict(torch.load(path, map_location=device))
+
+    def save(self, path: str) -> None:
+        """
+        Saves both random forests
+
+        Args:
+            path(str): the path to the directory where the forests need to be saved.
+        """
+        torch.save(self.state_dict(), path + ".pth")

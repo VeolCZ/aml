@@ -1,12 +1,11 @@
-import numpy as np
 import pandas as pd
 import torch
-import torchvision.transforms.functional as F
+import torchvision
 from numpy.typing import NDArray
-from preprocessing.ViTImageDataset import DatasetType, LabelType, d_type, use_cols
+from preprocessing.ViTImageDataset import DatasetType, LabelType, d_type, use_cols, class_count
 from preprocessing.TreePrerocessPipeline import TreePrerocessPipeline
 from torch.utils.data import Dataset
-from torchvision.io import read_image
+from albumentations import Compose
 
 
 class TreeImageDataset(Dataset):
@@ -36,6 +35,9 @@ class TreeImageDataset(Dataset):
         else:
             raise RuntimeError("Error setting transformation: Invalid dataset type")
 
+    def set_transform(self, transform: Compose) -> None:
+        self._base_transform = transform
+
     def __len__(self) -> int:
         """
         Returns the number of samples in the dataset.
@@ -54,18 +56,23 @@ class TreeImageDataset(Dataset):
         Returns:
             tuple[torch.Tensor, LabelType]: Transformed image and labels ("bbox", "cls" tensors).
         """
+        xmin, ymin, width, height = bbox
+        bbox_pascal_voc = [xmin, ymin, xmin + width, ymin + height]
+
         transformed = self._base_transform(
             image=image_np,
-            bboxes=[bbox],
+            bboxes=[bbox_pascal_voc],
             class_labels=[label]
         )
         transformed_image = transformed["image"]
         transformed_bboxes = transformed["bboxes"]
         transformed_labels = int(transformed["class_labels"][0])
+        one_hot_cls = torch.zeros((class_count))
+        one_hot_cls[transformed_labels - 1] = 1
 
         labels = {
-            "bbox": torch.tensor(transformed_bboxes, dtype=torch.float),
-            "cls": torch.tensor(transformed_labels) - 1
+            "bbox": torch.tensor(transformed_bboxes, dtype=torch.float) / TreePrerocessPipeline.img_size,
+            "cls": one_hot_cls
         }
 
         return transformed_image, labels
@@ -99,14 +106,12 @@ class TreeImageDataset(Dataset):
             raise RuntimeError(f"Error reading data for index {idx} from DataFrame: {e}")
 
         try:
-            image_tensor = read_image(img_path)
-            image = F.to_pil_image(image_tensor)
-            image_np = np.array(image)
+            image_tensor = torchvision.io.decode_image(img_path).permute(1, 2, 0)
 
         except Exception as e:
             raise RuntimeError(f"Error reading/converting image at index {idx} (path: {img_path}): {e}")
 
-        transformed_image, labels = self._transform_data(image_np, class_id, bbox)
+        transformed_image, labels = self._transform_data(image_tensor.numpy(), class_id, bbox)
 
         try:
             image_numpy_hwc = transformed_image.permute(1, 2, 0).numpy()
@@ -118,4 +123,11 @@ class TreeImageDataset(Dataset):
         return image_features, labels
 
     def get_cls_labels(self) -> list[int]:
+        """
+        Returns a list of all class labels in the dataset.
+
+        Returns:
+            list[int]: A list containing the integer class ID for each sample
+                in the dataset.
+        """
         return [int(label) for label in self._labels["class_id"]]

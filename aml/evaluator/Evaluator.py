@@ -1,10 +1,14 @@
-from dataclasses import dataclass
 import torch
 import torchvision
 from sklearn.metrics import accuracy_score
 from interface.ModelInterface import ModelInterface
-from torcheval.metrics.functional import multiclass_auroc, multiclass_f1_score, multiclass_confusion_matrix, \
-    multiclass_accuracy
+from torcheval.metrics.functional import (
+    multiclass_auroc,
+    multiclass_f1_score,
+    multiclass_confusion_matrix,
+    multiclass_accuracy,
+)
+from dataclasses import dataclass
 
 
 @dataclass
@@ -15,7 +19,6 @@ class EvalMetric:
     multiroc: float
     f1_score: float
     confusion_matrix: torch.Tensor
-    num_classes: int
     best_classes: torch.Tensor
     worst_classes: torch.Tensor
     iou: float
@@ -33,18 +36,6 @@ class Evaluator:
         returns: The accuracy score.
         """
         return float(accuracy_score(true_label_indices, clas.argmax(dim=1)))
-
-    @staticmethod
-    def get_IOU(bbox: torch.Tensor, true_label: torch.Tensor) -> float:
-        """
-        Calculate the Intersection over Union (IoU) for the model predictions.
-        args:
-            bbox (torch.Tensor): The predicted bounding boxes.
-            true_label (torch.Tensor): The true bounding boxes.
-        returns: The IoU score.
-        """
-        diagonal = torch.diag(torchvision.ops.box_iou(bbox, true_label))
-        return float(diagonal.mean(-1).item())
 
     @staticmethod
     def get_top_k(clas: torch.Tensor, true_label_indices: torch.Tensor, k: int) -> float:
@@ -98,10 +89,9 @@ class Evaluator:
         return multiclass_confusion_matrix(clas, true_label_indices, num_classes=clas.shape[1], normalize="pred")
 
     @staticmethod
-    def best_and_worst(pred_label_indices: torch.Tensor,
-                       true_label_indices: torch.Tensor,
-                       num_classes: int, k: int = 3
-                       ) -> tuple[torch.Tensor, torch.Tensor]:
+    def best_and_worst(
+        pred_label_indices: torch.Tensor, true_label_indices: torch.Tensor, num_classes: int, k: int = 3
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Computing top k best and worst performing glasses based on the per-class accuracy.
         args:
@@ -112,7 +102,8 @@ class Evaluator:
         returns: A tuple containing the indices of the best and worst classes.
         """
         per_class_acc = multiclass_accuracy(
-            input=pred_label_indices, target=true_label_indices, num_classes=num_classes, average=None)
+            input=pred_label_indices, target=true_label_indices, num_classes=num_classes, average=None
+        )
         valid = ~torch.isnan(per_class_acc)
         valid_accs = per_class_acc[valid]
         k = min(k, len(valid_accs))
@@ -121,20 +112,24 @@ class Evaluator:
         return best, worst
 
     @staticmethod
-    def random_IOU(true_label: torch.Tensor) -> float:
+    def get_IOU(bbox: torch.Tensor, true_label: torch.Tensor) -> float:
         """
-        Calculate the Intersection over Union (IoU) as if the model predicted mean bounding box.
+        Calculate the Intersection over Union (IoU) for the model predictions.
         args:
+            bbox (torch.Tensor): The predicted bounding boxes.
             true_label (torch.Tensor): The true bounding boxes.
         returns: The IoU score.
         """
-        mean_bbox = true_label.mean(0).repeat((true_label.shape[0], 1))
-        return float(torchvision.ops.box_iou(mean_bbox, true_label).mean(-1).mean(-1).item())
+        diagonal = torch.diag(torchvision.ops.box_iou(bbox, true_label))
+        return float(diagonal.mean(-1).item())
 
     @staticmethod
-    def eval(model: ModelInterface, input_data: torch.Tensor,
-             clas_label: torch.Tensor, bbox_label: torch.Tensor
-             ) -> EvalMetric:
+    def eval(
+        model: ModelInterface,
+        input_data: torch.Tensor,
+        clas_label: torch.Tensor,
+        bbox_label: torch.Tensor,
+    ) -> EvalMetric:
         """
         Evaluate the model using various metrics.
         args:
@@ -142,6 +137,7 @@ class Evaluator:
             input_data (torch.Tensor): The input data for the model.
             clas_label (torch.Tensor): The true class labels.
             bbox_label (torch.Tensor): The true bounding box labels.
+            global_step (float): the global step used in plotting
         returns: An EvalMetric object containing the evaluation results.
         """
         bbox, clas = model.predict(input_data)
@@ -156,19 +152,19 @@ class Evaluator:
         best, worst = Evaluator.best_and_worst(clas, true_label_indices, clas.shape[1], k=3)
 
         iou = Evaluator.get_IOU(bbox, bbox_label)
-        random_iou = Evaluator.random_IOU(bbox_label)
+        random_iou = Evaluator.get_IOU(bbox_label.mean(0).repeat((bbox_label.shape[0], 1)), bbox_label)
 
-        eval_results = EvalMetric(
+        eval_res = EvalMetric(
             accuracy=acc,
             top_3=top_3,
             top_5=top_5,
             multiroc=multiroc,
             f1_score=f1,
             confusion_matrix=confusion_matrix,
-            num_classes=clas.shape[0],
             best_classes=best,
             worst_classes=worst,
             iou=iou,
-            random_iou=random_iou
+            random_iou=random_iou,
         )
-        return eval_results
+
+        return eval_res

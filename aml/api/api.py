@@ -66,9 +66,9 @@ class ViTAPI(ls.LitAPI):
         """
         self.device = device
         self.vit = ViT()
-        self.vit.load("/weights/ViT_2025-05-16_ValLoss_1.84.pth")
+        self.vit.load("/weights/ViT/126.pth")
         self.forest = CompositeRandomForest()
-        self.forest.load("/weights/forest")
+        self.forest.load("/weights/forest/124")
         self.vit_preprocess = ViTPreprocessPipeline.vit_predict_transform
         self.tree_preprocess = TreePrerocessPipeline.tree_predict_transform
         self.cls_mapping = get_classes()
@@ -147,11 +147,9 @@ class ViTAPI(ls.LitAPI):
         if data[1] == ModelType.VIT:
             input_tensor = data[0].to(self.device)
             bbox, cls = self.vit.predict(input_tensor)
-            bbox = bbox / ViTPreprocessPipeline.img_size
         else:
             input_tensor = data[0].cpu()
             bbox, cls = self.forest.predict(input_tensor)
-            bbox = bbox / TreePrerocessPipeline.img_size
 
         bbox_list = bbox.squeeze(0).cpu().numpy().tolist()
         class_id = int(cls.argmax(-1).item())
@@ -165,9 +163,8 @@ def serve() -> None:
     assert os.path.exists("/logs"), "Please ensure the /logs directory exists"
     assert os.path.exists("/weights"), "Please ensure the /weights directory exists"
     assert os.path.exists("/data/labels.csv"), "Please ensure the labels are generated (--make_labels)"
-    assert os.path.exists("/weights/ViT_2025-05-16_ValLoss_1.84.pth"), "Please ensure that you have the latest weights"
-    assert os.path.exists("/weights/forest/classifier.pkl"), "Please ensure that you have the latest weights"
-    assert os.path.exists("/weights/forest/regressor.pkl"), "Please ensure that you have the latest weights"
+    assert os.path.exists("/weights/ViT/126.pth"), "Please ensure that you have the latest weights"
+    assert os.path.exists("/weights/forest/124"), "Please ensure that you have the latest weights"
 
     server = ls.LitServer(ViTAPI(max_batch_size=1), accelerator="auto")
     server.run(port=8000, host="0.0.0.0")

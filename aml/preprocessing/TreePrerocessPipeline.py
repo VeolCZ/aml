@@ -38,21 +38,18 @@ class TreePrerocessPipeline:
                 A.ColorJitter(p=0.3, hue=(-0.04, 0.04)),
                 A.MotionBlur(p=0.4),
                 A.RandomBrightnessContrast(p=0.4),
-                A.GaussNoise(p=0.1),
-                A.RandomRain(p=0.05)
+                A.GaussNoise(p=0.1)
             ], p=1, n=2, replace=False),
 
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            A.Normalize(),
             ToTensorV2(),
         ]
 
         return A.Compose(transforms=train_transforms,
                          bbox_params=A.BboxParams(
-                             format="coco",
+                             format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.2,
-                             min_area=10,
-                             clip=True
+                             clip=True,
                          ),
                          seed=SEED
                          )
@@ -66,22 +63,66 @@ class TreePrerocessPipeline:
             A.Compose: The evaluation transformation pipeline.
         """
         eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
-            A.Resize(height=256, width=256),
-            A.CenterCrop(height=TreePrerocessPipeline.img_size, width=TreePrerocessPipeline.img_size),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+            A.Resize(height=TreePrerocessPipeline.img_size, width=TreePrerocessPipeline.img_size),
+            A.Normalize(),
             ToTensorV2(),
         ]
 
         return A.Compose(transforms=eval_transforms,
                          bbox_params=A.BboxParams(
-                             format="coco",
+                             format="pascal_voc",
                              label_fields=["class_labels"],
-                             min_visibility=0.2,
-                             min_area=10,
                              clip=True
                          ),
                          seed=SEED
                          )
+
+    @staticmethod
+    def get_base_robustness_transform(severity: float, alteration_type: str) -> A.Compose:
+        """
+        Returns the base transformation pipeline for evaluation.
+
+        Args:
+            severity (float): the severity of the noise to be applied on the image
+
+        Returns:
+            A.Compose: The evaluation transformation pipeline.
+        """
+        alteration_method = None
+        match alteration_type:
+            case "gaussian":
+                alteration_method = A.GaussNoise(std_range=(severity, severity), p=1)
+            case "saltandpepper":
+                alteration_method = A.SaltAndPepper(amount=(severity, severity), p=1)
+            case "motionblur":
+                alteration_method = A.MotionBlur(blur_limit=(
+                    max(int(100 * severity) + severity % 2 == 0, 3),
+                    max(int(100 * severity) + severity % 2 == 0, 3)), p=1)
+            case "superpixels":
+                alteration_method = A.Superpixels(p_replace=(severity, severity), p=1)
+            case _:
+                raise ValueError(f"{alteration_type} is not an accepted alteration type")
+
+        eval_transforms: list[Union[A.BasicTransform, A.Affine]] = [
+            A.Resize(
+                height=TreePrerocessPipeline.img_size,
+                width=TreePrerocessPipeline.img_size,
+            ),
+            alteration_method,
+            A.Normalize(),
+            ToTensorV2(),
+        ]
+
+        return A.Compose(
+            transforms=eval_transforms,
+            bbox_params=A.BboxParams(
+                format="pascal_voc",
+                label_fields=["class_labels"],
+                min_visibility=0.8,
+                clip=True,
+            ),
+            seed=SEED,
+        )
 
     @staticmethod
     def tree_image_transform(image: NDArray) -> torch.Tensor:
@@ -106,6 +147,18 @@ class TreePrerocessPipeline:
 
     @staticmethod
     def tree_predict_transform(image: NDArray) -> torch.Tensor:
+        """
+        Prepares a raw image for prediction with a tree-based model.
+
+        This applies evaluation resizing and extracts HOG features from the
+        image, returning a batched feature vector.
+
+        Args:
+            image (NDArray): The raw input image as a NumPy array.
+
+        Returns:
+            torch.Tensor: A 2D tensor of HOG features.
+        """
         transform = TreePrerocessPipeline.get_base_eval_transform()
         raw_img = transform(
             image=image,
