@@ -81,8 +81,8 @@ class ViTTrainer:
             scheduler.step()
 
             val_loss = float((val_bbox_loss + val_cls_loss).item())
-            writer.add_scalar("Val/BBox Loss", bbox_loss.item(), epoch)
-            writer.add_scalar("Val/Cls Loss", cls_los.item(), epoch)
+            writer.add_scalar("Val/BBox Loss", val_bbox_loss.item(), epoch)
+            writer.add_scalar("Val/Cls Loss", val_cls_loss.item(), epoch)
             if val_loss <= best_val_loss:
                 best_val_loss = val_loss
                 current_patience = 0
